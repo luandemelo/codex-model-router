@@ -203,6 +203,39 @@ class SkillContractTests(unittest.TestCase):
     def test_public_skill_entrypoint_exists(self) -> None:
         self.assertTrue((SKILL_ROOT / "SKILL.md").is_file())
 
+    def test_host_dependency_preflight_is_before_dispatch_and_fail_closed(self) -> None:
+        skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        preflight_marker = "## Host dependency preflight"
+        sequence_marker = "## Required sequence"
+        self.assertIn(preflight_marker, skill_text)
+        self.assertLess(skill_text.index(preflight_marker), skill_text.index(sequence_marker))
+        required_fragments = (
+            "superpowers:subagent-driven-development",
+            "before the Luna controller",
+            "stop before the controller",
+            "ask for explicit",
+            "authorization",
+            "do not install automatically",
+        )
+        for fragment in required_fragments:
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, skill_text)
+
+    def test_dependency_recovery_steps_are_self_contained(self) -> None:
+        reference = SKILL_ROOT / "references" / "dependency-preflight.md"
+        self.assertTrue(reference.is_file())
+        reference_text = reference.read_text(encoding="utf-8")
+        for fragment in (
+            "Codex app",
+            "Plugins",
+            "Codex CLI",
+            "/plugins",
+            "fresh conversation",
+            "$superpowers:subagent-driven-development",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, reference_text)
+
     def test_public_cli_entrypoint_is_declared(self) -> None:
         cli = SKILL_ROOT / "scripts" / "codex_model_router.py"
         checker = SKILL_ROOT / "scripts" / "check_public_release.py"

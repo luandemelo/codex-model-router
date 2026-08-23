@@ -4,6 +4,15 @@ This reference governs the handoff after a route is compiled. The executable
 contracts in `scripts/cmr_contracts.py`, `scripts/cmr_compiler.py`,
 `scripts/cmr_dispatch.py`, and `scripts/cmr_runtime.py` are authoritative.
 
+## Host gate
+
+Before any controller invocation, run the host dependency preflight described in
+[`dependency-preflight.md`](dependency-preflight.md). It is outside the CMR
+schemas: the host must confirm the CMR skill, model/effort access, Python/Git,
+and a readable `superpowers:subagent-driven-development`. If any capability is
+missing, stop before controller, compiler, preflight, or spawn and request
+separately authorized installation.
+
 ## Control plane
 
 Use a fresh Luna/xhigh controller with `fork_turns: "none"`, an ephemeral

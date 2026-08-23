@@ -2,6 +2,12 @@
 
 All notable changes to Codex Model Router are documented here.
 
+## [Unreleased]
+
+- Added a fail-closed host dependency preflight that verifies Superpowers SDD
+  and other execution capabilities before the Luna controller, with explicit
+  installation and recovery steps.
+
 ## [0.4.0] - 2026-08-22
 
 - Renamed the public identity to `codex-model-router`.

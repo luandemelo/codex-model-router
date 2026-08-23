@@ -8,6 +8,28 @@ description: Use when a development task needs deterministic routing between gpt
 Use this skill before dispatching development work through Superpowers SDD.
 CMR keeps model judgment in a small envelope and derives route evidence in code.
 
+## Host dependency preflight
+
+Run this host-level gate **before the Luna controller**. It is not a model
+decision and it does not add fields to any CMR envelope or dispatch schema.
+
+1. Confirm that the active Codex surface supports skills and subagents, the
+   exact `gpt-5.6-luna` and `gpt-5.6-sol` model slugs with the required efforts,
+   Python 3.10+ and Git are available, and the CMR skill itself is loaded.
+2. Confirm that the enabled skill inventory contains a readable
+   `superpowers:subagent-driven-development`. Treat a missing, disabled, or
+   unreadable skill as unavailable. This release is tested with Superpowers
+   6.3.0; record a visible version when the host provides one.
+3. If any required capability is unavailable, **stop before the controller,
+   compiler, semantic preflight, or any worker/reviewer spawn**. Do not invent
+   a successful check from documentation or a prior conversation. Report the
+   exact blocker and follow [dependency-preflight.md](references/dependency-preflight.md)
+   to recommend installation.
+4. Installation is a separately authorized external action: ask for explicit
+   authorization and do not install automatically. After installation, start a
+   fresh conversation or restart Codex when needed, re-check the host inventory,
+   and continue only after every required capability is available.
+
 ## Required sequence
 
 1. A fresh `gpt-5.6-luna`/`xhigh` controller emits only the

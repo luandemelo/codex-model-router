@@ -17,6 +17,7 @@
     "skills/codex-model-router/agents/openai.yaml",
     "skills/codex-model-router/assets/AGENTS.routing-snippet.md",
     "skills/codex-model-router/references/action-ontology.json",
+    "skills/codex-model-router/references/dependency-preflight.md",
     "skills/codex-model-router/references/execution-contract.md",
     "skills/codex-model-router/references/fact-ontology.json",
     "skills/codex-model-router/references/github-governance.md",

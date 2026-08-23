@@ -83,6 +83,10 @@ You need:
   Superpowers 6.3.0);
 - Python 3.10 or newer and Git for local validation and contribution.
 
+CMR checks these host capabilities before invoking the Luna controller. If
+Superpowers SDD or another required capability is missing, CMR stops before
+controller, preflight, or worker execution and shows the recovery steps in
+[`skills/codex-model-router/references/dependency-preflight.md`](skills/codex-model-router/references/dependency-preflight.md).
 See [Dependencies](#dependencies) for the complete boundary.
 
 ### 2. Install the skill directly from GitHub
@@ -260,6 +264,14 @@ Required host capabilities:
   `superpowers:subagent-driven-development` (host dependency, not bundled);
 - Python 3.10+ using the standard library only;
 - Git for local history and review workflows.
+
+CMR performs a host dependency preflight before the Luna controller. It must
+find an enabled, readable `superpowers:subagent-driven-development` skill and
+the other capabilities above. A missing or unreadable capability blocks the
+controller, compiler, semantic preflight, and worker/reviewer spawn; CMR does
+not silently downgrade or install anything. Installation requires separate
+authorization. See the [dependency preflight](skills/codex-model-router/references/dependency-preflight.md)
+for Codex App and CLI recovery steps.
 
 There is no runtime PyPI, npm, database, hosted-service, API-key, or MCP
 dependency. Python 3.10, 3.11, 3.12, and 3.13 are exercised in CI.
