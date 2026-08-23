@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-first-routing.local/references/preflight-invocation.schema.json",
+  "title": "Quality-First Preflight Invocation",
+  "description": "Documentary-only historical invocation evidence; it cannot authorize dispatch.",
+  "oneOf": [
+    {"$ref": "#/$defs/semanticPreflightInvocation"},
+    {"$ref": "#/$defs/safeLaneAttestationInvocation"}
+  ],
+  "$defs": {
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+        },
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "ephemeralCwd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "fresh", "destroyed"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!//)(?!/$)(?!.*(?:/\\.\\.?)(?:/|$))(?!.*//)(?!.*\\/$)/[^\\\\]+$"
+        },
+        "fresh": {"const": true},
+        "destroyed": {"const": true}
+      }
+    },
+    "safeLaneEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "brief_sha256", "route", "justification"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "brief_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "route": {"const": "luna_xhigh"},
+        "justification": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    },
+    "semanticPreflightInvocation": {
+      "description": "Task-bound Luna/max semantic preflight evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "purpose",
+        "task_id",
+        "model",
+        "reasoning_effort",
+        "fork_turns",
+        "fresh_thread",
+        "thread_id",
+        "cwd",
+        "exit_code",
+        "external_writes",
+        "brief",
+        "candidate",
+        "raw",
+        "transcript"
+      ],
+      "properties": {
+        "schema_version": {"const": "qfr-semantic-preflight-invocation-v1"},
+        "purpose": {"const": "semantic_preflight"},
+        "task_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "model": {"const": "gpt-5.6-luna"},
+        "reasoning_effort": {"const": "max"},
+        "fork_turns": {"const": "none"},
+        "fresh_thread": {"const": true},
+        "thread_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "cwd": {"$ref": "#/$defs/ephemeralCwd"},
+        "exit_code": {"type": "integer", "const": 0},
+        "external_writes": {"const": false},
+        "brief": {"$ref": "#/$defs/artifactReference"},
+        "candidate": {"$ref": "#/$defs/artifactReference"},
+        "raw": {"$ref": "#/$defs/artifactReference"},
+        "transcript": {"$ref": "#/$defs/artifactReference"}
+      }
+    },
+    "safeLaneAttestationInvocation": {
+      "description": "Global evidence from one canonical Sol/max planning attestation; reusable across matching task sidecars.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "purpose",
+        "model",
+        "reasoning_effort",
+        "fork_turns",
+        "fresh_thread",
+        "thread_id",
+        "cwd",
+        "exit_code",
+        "external_writes",
+        "plan",
+        "entries",
+        "raw",
+        "transcript"
+      ],
+      "properties": {
+        "schema_version": {"const": "qfr-safe-lane-attestation-invocation-v2"},
+        "purpose": {"const": "safe_lane_attestation"},
+        "model": {"const": "gpt-5.6-sol"},
+        "reasoning_effort": {"const": "max"},
+        "fork_turns": {"const": "none"},
+        "fresh_thread": {"const": true},
+        "thread_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "cwd": {"$ref": "#/$defs/ephemeralCwd"},
+        "exit_code": {"type": "integer", "const": 0},
+        "external_writes": {"const": false},
+        "plan": {"$ref": "#/$defs/artifactReference"},
+        "entries": {
+          "description": "Exact certificate entries. JSON Schema rejects exact duplicates; the dispatch CLI additionally enforces unique task_id+brief_sha256 keys.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/safeLaneEntry"}
+        },
+        "raw": {"$ref": "#/$defs/artifactReference"},
+        "transcript": {"$ref": "#/$defs/artifactReference"}
+      }
+    }
+  }
+}

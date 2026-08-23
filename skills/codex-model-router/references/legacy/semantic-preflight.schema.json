@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-first-routing.local/references/semantic-preflight.schema.json",
+  "title": "Quality-First Semantic Preflight",
+  "description": "Documentary-only historical sidecar; it cannot authorize dispatch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "brief",
+    "candidate",
+    "selector",
+    "outcome",
+    "blockers",
+    "justification"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "qfr-semantic-preflight-v1"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "brief": {
+      "$ref": "#/$defs/artifactReference"
+    },
+    "candidate": {
+      "$ref": "#/$defs/artifactReference"
+    },
+    "selector": {
+      "$ref": "#/$defs/selector"
+    },
+    "outcome": {
+      "enum": ["skipped", "accepted", "amended", "blocked"]
+    },
+    "invocation": {
+      "$ref": "#/$defs/artifactReference"
+    },
+    "replacement": {
+      "$ref": "#/$defs/replacement"
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      }
+    },
+    "justification": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "selector": {
+          "properties": {
+            "decision": {"const": "skip"}
+          },
+          "required": ["safe_lane"]
+        },
+        "outcome": {"const": "skipped"},
+        "blockers": {"maxItems": 0}
+      },
+      "not": {
+        "anyOf": [
+          {"required": ["invocation"]},
+          {"required": ["replacement"]}
+        ]
+      }
+    },
+    {
+      "required": ["invocation"],
+      "properties": {
+        "selector": {
+          "properties": {
+            "decision": {"const": "run"}
+          },
+          "not": {"required": ["safe_lane"]}
+        },
+        "outcome": {"const": "accepted"},
+        "blockers": {"maxItems": 0}
+      },
+      "not": {"required": ["replacement"]}
+    },
+    {
+      "required": ["invocation", "replacement"],
+      "properties": {
+        "selector": {
+          "properties": {
+            "decision": {"const": "run"}
+          },
+          "not": {"required": ["safe_lane"]}
+        },
+        "outcome": {"const": "amended"},
+        "blockers": {"maxItems": 0}
+      }
+    },
+    {
+      "required": ["invocation"],
+      "properties": {
+        "selector": {
+          "properties": {
+            "decision": {"const": "run"}
+          },
+          "not": {"required": ["safe_lane"]}
+        },
+        "outcome": {"const": "blocked"},
+        "blockers": {"minItems": 1}
+      },
+      "not": {"required": ["replacement"]}
+    },
+    {
+      "properties": {
+        "selector": {
+          "properties": {
+            "decision": {"const": "block"}
+          },
+          "not": {"required": ["safe_lane"]}
+        },
+        "outcome": {"const": "blocked"},
+        "blockers": {"minItems": 1}
+      },
+      "not": {
+        "anyOf": [
+          {"required": ["invocation"]},
+          {"required": ["replacement"]}
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "trigger_ids"],
+      "properties": {
+        "decision": {
+          "enum": ["skip", "run", "block"]
+        },
+        "trigger_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "candidate_invalid",
+              "artifact_binding_invalid",
+              "safe_lane_unavailable",
+              "nondefault_worker_route",
+              "hard_gate_or_recurrence",
+              "integration_or_elevated_risk",
+              "luna_max_eligibility",
+              "branch_final_review",
+              "external_action_present",
+              "engine_context_or_status_anomaly",
+              "unattested_route_enabling_claim",
+              "multiple_policy_facts",
+              "negation_contrast_or_condition",
+              "indirect_or_ambiguous_implication",
+              "controller_uncertainty"
+            ]
+          }
+        },
+        "safe_lane": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["manifest"],
+          "properties": {
+            "manifest": {"$ref": "#/$defs/artifactReference"}
+          }
+        }
+      }
+    },
+    "replacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "risk_level",
+        "risk_signals",
+        "hard_gates",
+        "low_blast_radius",
+        "architecture_approved",
+        "integration",
+        "judgment_required",
+        "justification"
+      ],
+      "properties": {
+        "risk_level": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "risk_signals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "pattern": "\\S"}
+        },
+        "hard_gates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "pattern": "\\S"}
+        },
+        "low_blast_radius": {"type": "boolean"},
+        "architecture_approved": {"type": "boolean"},
+        "integration": {"type": "boolean"},
+        "judgment_required": {"type": "boolean"},
+        "justification": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    }
+  }
+}

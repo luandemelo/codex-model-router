@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-preflight-invocation-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "task_id",
+    "brief",
+    "candidate_evidence",
+    "candidate_decision",
+    "selector",
+    "prompt",
+    "raw",
+    "transcript",
+    "occurrence",
+    "model",
+    "reasoning_effort",
+    "fork_turns",
+    "thread_id",
+    "cwd",
+    "exit_code",
+    "external_writes",
+    "usage"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-preflight-invocation-v1"
+    },
+    "phase": {
+      "const": "preflight"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brief": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "candidate_evidence": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "candidate_decision": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "prompt": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "raw": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "transcript": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "occurrence": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "selector": {
+      "$ref": "#/$defs/RunSelector"
+    },
+    "model": {
+      "const": "gpt-5.6-luna"
+    },
+    "reasoning_effort": {
+      "const": "max"
+    },
+    "fork_turns": {
+      "const": "none"
+    },
+    "thread_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cwd": {
+      "$ref": "#/$defs/CwdEvidence"
+    },
+    "exit_code": {
+      "const": 0
+    },
+    "external_writes": {
+      "const": false
+    },
+    "usage": {
+      "$ref": "#/$defs/UsageEvidence"
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "UsageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cached_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CwdEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "fresh",
+        "destroyed",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ephemeral"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "fresh": {
+          "const": true
+        },
+        "destroyed": {
+          "const": true
+        },
+        "read_only": {
+          "const": true
+        }
+      }
+    },
+    "RunSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "trigger_ids"
+      ],
+      "properties": {
+        "decision": {
+          "const": "run"
+        },
+        "trigger_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "safe_lane_unavailable",
+              "nondefault_worker_route",
+              "hard_gate_or_recurrence",
+              "integration_or_elevated_risk",
+              "luna_max_eligibility",
+              "branch_final_review",
+              "external_action_present",
+              "multiple_policy_facts",
+              "negation_contrast_or_condition",
+              "indirect_or_ambiguous_implication",
+              "controller_uncertainty"
+            ]
+          },
+          "uniqueItems": true,
+          "x-canonical-order": [
+            "safe_lane_unavailable",
+            "nondefault_worker_route",
+            "hard_gate_or_recurrence",
+            "integration_or_elevated_risk",
+            "luna_max_eligibility",
+            "branch_final_review",
+            "external_action_present",
+            "multiple_policy_facts",
+            "negation_contrast_or_condition",
+            "indirect_or_ambiguous_implication",
+            "controller_uncertainty"
+          ]
+        }
+      }
+    }
+  }
+}

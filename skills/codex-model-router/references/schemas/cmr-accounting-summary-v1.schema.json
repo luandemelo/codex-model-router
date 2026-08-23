@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-accounting-summary-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_count",
+    "selector_counts",
+    "phase_counts",
+    "expected_phase_counts",
+    "call_cardinality",
+    "total_calls",
+    "transport_retry_count",
+    "sdd_fix_rounds",
+    "canonical_call_shape",
+    "usage",
+    "operational_failures",
+    "semantic_failures",
+    "instrument_failures"
+  ],
+  "properties": {
+    "schema_version": {"const": "cmr-accounting-summary-v1"},
+    "task_count": {"type": "integer", "minimum": 0},
+    "selector_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run", "skip", "block"],
+      "properties": {
+        "run": {"type": "integer", "minimum": 0},
+        "skip": {"type": "integer", "minimum": 0},
+        "block": {"type": "integer", "minimum": 0}
+      }
+    },
+    "phase_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planning", "controller", "preflight", "worker",
+        "task_review", "re_review", "final_review"
+      ],
+      "properties": {
+        "planning": {"type": "integer", "minimum": 0},
+        "controller": {"type": "integer", "minimum": 0},
+        "preflight": {"type": "integer", "minimum": 0},
+        "worker": {"type": "integer", "minimum": 0},
+        "task_review": {"type": "integer", "minimum": 0},
+        "re_review": {"type": "integer", "minimum": 0},
+        "final_review": {"type": "integer", "minimum": 0}
+      }
+    },
+    "expected_phase_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planning", "controller", "preflight", "worker",
+        "task_review", "re_review", "final_review"
+      ],
+      "properties": {
+        "planning": {"type": "integer", "minimum": 0},
+        "controller": {"type": "integer", "minimum": 0},
+        "preflight": {"type": "integer", "minimum": 0},
+        "worker": {"type": "integer", "minimum": 0},
+        "task_review": {"type": "integer", "minimum": 0},
+        "re_review": {"type": "integer", "minimum": 0},
+        "final_review": {"type": "integer", "minimum": 0}
+      }
+    },
+    "call_cardinality": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/Cardinality"},
+      "uniqueItems": true
+    },
+    "total_calls": {"type": "integer", "minimum": 0},
+    "transport_retry_count": {"type": "integer", "minimum": 0},
+    "sdd_fix_rounds": {"type": "integer", "minimum": 0},
+    "canonical_call_shape": {"type": "boolean"},
+    "usage": {"$ref": "#/$defs/UsageEvidence"},
+    "operational_failures": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "semantic_failures": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "instrument_failures": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "Cardinality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase", "scope_kind", "scope_id", "round_index", "attempt_count"
+      ],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": [
+            "planning", "controller", "preflight", "worker",
+            "task_review", "re_review", "final_review"
+          ]
+        },
+        "scope_kind": {
+          "type": "string",
+          "enum": ["plan", "task", "release"]
+        },
+        "scope_id": {"type": "string", "minLength": 1},
+        "round_index": {
+          "oneOf": [
+            {"type": "integer", "minimum": 0, "maximum": 5},
+            {"type": "null"}
+          ]
+        },
+        "attempt_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "UsageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "cached_input_tokens": {"type": "integer", "minimum": 0},
+        "cache_write_input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "reasoning_output_tokens": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

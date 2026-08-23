@@ -1,0 +1,87 @@
+[
+  {
+    "id": "github_authenticate",
+    "target_kind": "github_account",
+    "target_required": true
+  },
+  {
+    "id": "repository_create",
+    "target_kind": "repository",
+    "target_required": true
+  },
+  {
+    "id": "repository_settings_update",
+    "target_kind": "repository",
+    "target_required": true
+  },
+  {
+    "id": "repository_topics_update",
+    "target_kind": "repository",
+    "target_required": true
+  },
+  {
+    "id": "issue_create",
+    "target_kind": "repository",
+    "target_required": true
+  },
+  {
+    "id": "issue_update",
+    "target_kind": "numbered_resource",
+    "target_required": true
+  },
+  {
+    "id": "issue_comment",
+    "target_kind": "numbered_resource",
+    "target_required": true
+  },
+  {
+    "id": "push",
+    "target_kind": "full_ref",
+    "target_required": true
+  },
+  {
+    "id": "pr_create",
+    "target_kind": "pull_request_create",
+    "target_required": true
+  },
+  {
+    "id": "pr_update",
+    "target_kind": "numbered_resource",
+    "target_required": true
+  },
+  {
+    "id": "merge",
+    "target_kind": "numbered_resource",
+    "target_required": true
+  },
+  {
+    "id": "tag_create",
+    "target_kind": "tag_ref",
+    "target_required": true
+  },
+  {
+    "id": "release_create",
+    "target_kind": "release_tag",
+    "target_required": true
+  },
+  {
+    "id": "deploy",
+    "target_kind": "environment",
+    "target_required": true
+  },
+  {
+    "id": "install_skill",
+    "target_kind": "absolute_path",
+    "target_required": true
+  },
+  {
+    "id": "install_plugin",
+    "target_kind": "absolute_path",
+    "target_required": true
+  },
+  {
+    "id": "marketplace_publish",
+    "target_kind": "marketplace_plugin",
+    "target_required": true
+  }
+]

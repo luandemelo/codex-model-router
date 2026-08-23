@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-controller-result-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fact_ids",
+    "uncertainty_ids",
+    "action_intents"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-controller-result-v1"
+    },
+    "fact_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "architecture",
+          "architecture_approved",
+          "audit",
+          "authentication",
+          "authorization",
+          "availability_or_integrity_impact",
+          "backfill",
+          "billing",
+          "clear_isolated_low_risk",
+          "complex_local_execution",
+          "concurrency",
+          "contract_coordination",
+          "critical_integrity",
+          "critical_risk",
+          "cross_module_integration",
+          "cryptography",
+          "data_integrity",
+          "destruction",
+          "distributed_consistency",
+          "elevated_risk",
+          "encryption",
+          "entitlement",
+          "finding_critical",
+          "idempotency",
+          "incident_risk",
+          "integration_tests",
+          "invoice",
+          "irreversible_effect",
+          "judgment_required",
+          "ledger_financial",
+          "locks",
+          "low_blast_radius",
+          "material_data_transformation",
+          "multi_module_integration",
+          "multiple_plausible_tradeoffs",
+          "payment",
+          "pii",
+          "price",
+          "public_api_structural_change",
+          "race_condition",
+          "reconciliation",
+          "regulated_data",
+          "rollback",
+          "schema_migration",
+          "secrets",
+          "security_risk",
+          "structural_conflict",
+          "trust_boundary",
+          "untrusted_input"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "uncertainty_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "multiple_policy_facts",
+          "negation_contrast_or_condition",
+          "indirect_or_ambiguous_implication",
+          "controller_uncertainty"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "action_intents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "github_authenticate",
+              "repository_create",
+              "repository_settings_update",
+              "repository_topics_update",
+              "issue_create",
+              "issue_update",
+              "issue_comment",
+              "push",
+              "pr_create",
+              "pr_update",
+              "merge",
+              "tag_create",
+              "release_create",
+              "deploy",
+              "install_skill",
+              "install_plugin",
+              "marketplace_publish"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}

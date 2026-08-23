@@ -1,0 +1,352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-route-evidence-v2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "brief",
+    "fact_ids",
+    "uncertainty_ids",
+    "action_intents",
+    "raw",
+    "occurrence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-route-evidence-v2"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brief": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "fact_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "architecture",
+          "architecture_approved",
+          "audit",
+          "authentication",
+          "authorization",
+          "availability_or_integrity_impact",
+          "backfill",
+          "billing",
+          "clear_isolated_low_risk",
+          "complex_local_execution",
+          "concurrency",
+          "contract_coordination",
+          "critical_integrity",
+          "critical_risk",
+          "cross_module_integration",
+          "cryptography",
+          "data_integrity",
+          "destruction",
+          "distributed_consistency",
+          "elevated_risk",
+          "encryption",
+          "entitlement",
+          "finding_critical",
+          "idempotency",
+          "incident_risk",
+          "integration_tests",
+          "invoice",
+          "irreversible_effect",
+          "judgment_required",
+          "ledger_financial",
+          "locks",
+          "low_blast_radius",
+          "material_data_transformation",
+          "multi_module_integration",
+          "multiple_plausible_tradeoffs",
+          "payment",
+          "pii",
+          "price",
+          "public_api_structural_change",
+          "race_condition",
+          "reconciliation",
+          "regulated_data",
+          "rollback",
+          "schema_migration",
+          "secrets",
+          "security_risk",
+          "structural_conflict",
+          "trust_boundary",
+          "untrusted_input"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "uncertainty_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "multiple_policy_facts",
+          "negation_contrast_or_condition",
+          "indirect_or_ambiguous_implication",
+          "controller_uncertainty"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "action_intents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "github_authenticate",
+              "repository_create",
+              "repository_settings_update",
+              "repository_topics_update",
+              "issue_create",
+              "issue_update",
+              "issue_comment",
+              "push",
+              "pr_create",
+              "pr_update",
+              "merge",
+              "tag_create",
+              "release_create",
+              "deploy",
+              "install_skill",
+              "install_plugin",
+              "marketplace_publish"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "uniqueItems": true
+    },
+    "raw": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "occurrence": {
+      "$ref": "#/$defs/OccurrenceEvidence"
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "UsageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cached_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CwdEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "fresh",
+        "destroyed",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ephemeral"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "fresh": {
+          "const": true
+        },
+        "destroyed": {
+          "const": true
+        },
+        "read_only": {
+          "const": true
+        }
+      }
+    },
+    "OccurrenceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "phase",
+        "scope_kind",
+        "scope_id",
+        "round_index",
+        "task_id",
+        "response_policy",
+        "model",
+        "reasoning_effort",
+        "fork_turns",
+        "prompt_sha256",
+        "thread_policy",
+        "thread_id",
+        "cwd",
+        "write_policy",
+        "exit_code",
+        "external_writes",
+        "transcript_sha256",
+        "raw_sha256",
+        "usage",
+        "tool_event_count",
+        "terminal_report_sha256",
+        "ignored_empty_agent_messages",
+        "accepted",
+        "failure_class",
+        "errors"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-occurrence-audit-v1"
+        },
+        "phase": {
+          "const": "controller"
+        },
+        "scope_kind": {
+          "const": "task"
+        },
+        "scope_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "round_index": {
+          "type": "null"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "response_policy": {
+          "const": "closed_json"
+        },
+        "model": {
+          "const": "gpt-5.6-luna"
+        },
+        "reasoning_effort": {
+          "const": "xhigh"
+        },
+        "fork_turns": {
+          "const": "none"
+        },
+        "prompt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "thread_policy": {
+          "const": "fresh"
+        },
+        "thread_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cwd": {
+          "$ref": "#/$defs/CwdEvidence"
+        },
+        "write_policy": {
+          "const": "control_plane_no_write"
+        },
+        "exit_code": {
+          "const": 0
+        },
+        "external_writes": {
+          "const": false
+        },
+        "transcript_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "raw_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "usage": {
+          "$ref": "#/$defs/UsageEvidence"
+        },
+        "tool_event_count": {
+          "const": 0
+        },
+        "terminal_report_sha256": {
+          "type": "null"
+        },
+        "ignored_empty_agent_messages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accepted": {
+          "const": true
+        },
+        "failure_class": {
+          "type": "null"
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    }
+  }
+}

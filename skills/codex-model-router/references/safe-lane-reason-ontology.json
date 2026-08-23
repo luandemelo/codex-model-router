@@ -1,0 +1,6 @@
+[
+  "clear_isolated_low_risk",
+  "single_module_bounded_change",
+  "read_only_or_reversible_local_work",
+  "approved_plan_no_open_design_decision"
+]

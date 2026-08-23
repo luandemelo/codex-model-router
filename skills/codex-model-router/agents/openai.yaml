@@ -1,0 +1,7 @@
+interface:
+  display_name: "Codex Model Router"
+  short_description: "Deterministic Luna/Sol routing for SDD"
+  default_prompt: "Use $codex-model-router to compile and validate this task route before Superpowers SDD."
+
+policy:
+  allow_implicit_invocation: true

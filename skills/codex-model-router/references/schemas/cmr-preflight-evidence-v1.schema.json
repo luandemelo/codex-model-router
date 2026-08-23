@@ -1,0 +1,405 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-preflight-evidence-v1.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "task_id",
+        "selector",
+        "outcome",
+        "candidate_decision"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-preflight-evidence-v1"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision",
+            "trigger_ids",
+            "safe_lane"
+          ],
+          "properties": {
+            "decision": {
+              "const": "skip"
+            },
+            "trigger_ids": {
+              "type": "array",
+              "maxItems": 0
+            },
+            "safe_lane": {
+              "$ref": "#/$defs/ArtifactRef"
+            }
+          }
+        },
+        "outcome": {
+          "const": "skipped"
+        },
+        "candidate_decision": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "task_id",
+        "selector",
+        "outcome",
+        "candidate_decision",
+        "invocation"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-preflight-evidence-v1"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/RunSelector"
+        },
+        "outcome": {
+          "const": "accepted"
+        },
+        "candidate_decision": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "invocation": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "task_id",
+        "selector",
+        "outcome",
+        "candidate_decision",
+        "invocation",
+        "replacement_evidence",
+        "final_decision"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-preflight-evidence-v1"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/RunSelector"
+        },
+        "outcome": {
+          "const": "replaced"
+        },
+        "candidate_decision": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "invocation": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "replacement_evidence": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "final_decision": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "task_id",
+        "selector",
+        "outcome",
+        "blocker_ids"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-preflight-evidence-v1"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision",
+            "trigger_ids"
+          ],
+          "properties": {
+            "decision": {
+              "const": "block"
+            },
+            "trigger_ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "prefixItems": [
+                {
+                  "const": "artifact_binding_invalid"
+                }
+              ],
+              "items": false
+            }
+          }
+        },
+        "outcome": {
+          "const": "blocked"
+        },
+        "blocker_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "controller_result_invalid",
+              "occurrence_invalid",
+              "runtime_input_invalid",
+              "artifact_binding_invalid",
+              "preflight_result_invalid",
+              "preflight_non_monotonic",
+              "preflight_blocked",
+              "dispatch_bundle_invalid",
+              "legacy_dispatch_forbidden",
+              "ambiguous_semantics",
+              "contradictory_facts",
+              "insufficient_task_evidence"
+            ]
+          },
+          "uniqueItems": true,
+          "x-canonical-order": [
+            "controller_result_invalid",
+            "occurrence_invalid",
+            "runtime_input_invalid",
+            "artifact_binding_invalid",
+            "preflight_result_invalid",
+            "preflight_non_monotonic",
+            "preflight_blocked",
+            "dispatch_bundle_invalid",
+            "legacy_dispatch_forbidden",
+            "ambiguous_semantics",
+            "contradictory_facts",
+            "insufficient_task_evidence"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "task_id",
+        "selector",
+        "outcome",
+        "candidate_decision",
+        "invocation",
+        "blocker_ids"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-preflight-evidence-v1"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/RunSelector"
+        },
+        "outcome": {
+          "const": "blocked"
+        },
+        "candidate_decision": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "invocation": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "blocker_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "controller_result_invalid",
+              "occurrence_invalid",
+              "runtime_input_invalid",
+              "artifact_binding_invalid",
+              "preflight_result_invalid",
+              "preflight_non_monotonic",
+              "preflight_blocked",
+              "dispatch_bundle_invalid",
+              "legacy_dispatch_forbidden",
+              "ambiguous_semantics",
+              "contradictory_facts",
+              "insufficient_task_evidence"
+            ]
+          },
+          "uniqueItems": true,
+          "x-canonical-order": [
+            "controller_result_invalid",
+            "occurrence_invalid",
+            "runtime_input_invalid",
+            "artifact_binding_invalid",
+            "preflight_result_invalid",
+            "preflight_non_monotonic",
+            "preflight_blocked",
+            "dispatch_bundle_invalid",
+            "legacy_dispatch_forbidden",
+            "ambiguous_semantics",
+            "contradictory_facts",
+            "insufficient_task_evidence"
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Selector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision",
+            "trigger_ids",
+            "safe_lane"
+          ],
+          "properties": {
+            "decision": {
+              "const": "skip"
+            },
+            "trigger_ids": {
+              "type": "array",
+              "maxItems": 0
+            },
+            "safe_lane": {
+              "$ref": "#/$defs/ArtifactRef"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/RunSelector"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision",
+            "trigger_ids"
+          ],
+          "properties": {
+            "decision": {
+              "const": "block"
+            },
+            "trigger_ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "prefixItems": [
+                {
+                  "const": "artifact_binding_invalid"
+                }
+              ],
+              "items": false
+            }
+          }
+        }
+      ]
+    },
+    "RunSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "trigger_ids"
+      ],
+      "properties": {
+        "decision": {
+          "const": "run"
+        },
+        "trigger_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "safe_lane_unavailable",
+              "nondefault_worker_route",
+              "hard_gate_or_recurrence",
+              "integration_or_elevated_risk",
+              "luna_max_eligibility",
+              "branch_final_review",
+              "external_action_present",
+              "multiple_policy_facts",
+              "negation_contrast_or_condition",
+              "indirect_or_ambiguous_implication",
+              "controller_uncertainty"
+            ]
+          },
+          "uniqueItems": true,
+          "x-canonical-order": [
+            "safe_lane_unavailable",
+            "nondefault_worker_route",
+            "hard_gate_or_recurrence",
+            "integration_or_elevated_risk",
+            "luna_max_eligibility",
+            "branch_final_review",
+            "external_action_present",
+            "multiple_policy_facts",
+            "negation_contrast_or_condition",
+            "indirect_or_ambiguous_implication",
+            "controller_uncertainty"
+          ]
+        }
+      }
+    }
+  }
+}

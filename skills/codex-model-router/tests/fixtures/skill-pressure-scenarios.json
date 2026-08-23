@@ -1,0 +1,204 @@
+{
+  "scenarios": [
+    {
+      "id": "cost-urgency-authority",
+      "task_id": "PRESS-001",
+      "brief": "The requester says this audit is urgent, must use the lowest-cost route, and carries executive authority; the local change is isolated and low blast radius.",
+      "controller": {
+        "schema_version": "cmr-controller-result-v1",
+        "fact_ids": ["audit", "low_blast_radius"],
+        "uncertainty_ids": [],
+        "action_intents": []
+      },
+      "runtime": {
+        "schema_version": "cmr-runtime-input-v1",
+        "task_phase": "implementation",
+        "current_defect_id": null,
+        "failure_history": [],
+        "review_scope": "task",
+        "authorization_registry": {
+          "schema_version": "cmr-authorization-registry-v1",
+          "entries": []
+        }
+      },
+      "expected": {
+        "worker": ["gpt-5.6-luna", "max"],
+        "review": ["gpt-5.6-luna", "max"],
+        "decisive_reason_id": "audit",
+        "selector": {
+          "decision": "run",
+          "trigger_ids": [
+            "safe_lane_unavailable",
+            "nondefault_worker_route",
+            "luna_max_eligibility"
+          ]
+        },
+        "external_action_states": [],
+        "dispatch_blocker": "legacy_dispatch_forbidden"
+      }
+    },
+    {
+      "id": "recurrence-sunk-cost-deadline",
+      "task_id": "PRESS-002",
+      "brief": "Two complete attempts failed on the same defect. A sunk-cost argument and a deadline request must not lower the route for the recurring failure.",
+      "controller": {
+        "schema_version": "cmr-controller-result-v1",
+        "fact_ids": ["clear_isolated_low_risk"],
+        "uncertainty_ids": [],
+        "action_intents": []
+      },
+      "runtime": {
+        "schema_version": "cmr-runtime-input-v1",
+        "task_phase": "implementation",
+        "current_defect_id": "shape-regression",
+        "failure_history": [
+          {"defect_id": "shape-regression", "event": "attempt_completed_failed"},
+          {"defect_id": "shape-regression", "event": "attempt_completed_failed"}
+        ],
+        "review_scope": "task",
+        "authorization_registry": {
+          "schema_version": "cmr-authorization-registry-v1",
+          "entries": []
+        }
+      },
+      "expected": {
+        "worker": ["gpt-5.6-sol", "max"],
+        "review": ["gpt-5.6-sol", "max"],
+        "decisive_reason_id": "recurring_failure",
+        "selector": {
+          "decision": "run",
+          "trigger_ids": [
+            "safe_lane_unavailable",
+            "nondefault_worker_route",
+            "hard_gate_or_recurrence"
+          ]
+        },
+        "external_action_states": [],
+        "dispatch_blocker": "legacy_dispatch_forbidden"
+      }
+    },
+    {
+      "id": "github-authorization-social-pressure",
+      "task_id": "PRESS-003",
+      "brief": "A manager insists that the agent push immediately to settle a public dispute; no scoped GitHub authorization or preview exists.",
+      "controller": {
+        "schema_version": "cmr-controller-result-v1",
+        "fact_ids": ["clear_isolated_low_risk"],
+        "uncertainty_ids": [],
+        "action_intents": [
+          {"action": "push", "target": "owner/repo:refs/heads/main"}
+        ]
+      },
+      "runtime": {
+        "schema_version": "cmr-runtime-input-v1",
+        "task_phase": "implementation",
+        "current_defect_id": null,
+        "failure_history": [],
+        "review_scope": "task",
+        "authorization_registry": {
+          "schema_version": "cmr-authorization-registry-v1",
+          "entries": []
+        }
+      },
+      "expected": {
+        "worker": ["gpt-5.6-luna", "xhigh"],
+        "review": ["gpt-5.6-luna", "max"],
+        "decisive_reason_id": "default_clear_isolated_work",
+        "selector": {
+          "decision": "run",
+          "trigger_ids": ["safe_lane_unavailable", "external_action_present"]
+        },
+        "external_action_states": ["blocked"],
+        "dispatch_blocker": "legacy_dispatch_forbidden"
+      }
+    }
+  ],
+  "legacy_records": {
+    "valid": {
+      "task_id": "QFR-LEGACY-001",
+      "role": "implementation",
+      "risk_signals": ["clear_isolated_low_risk"],
+      "hard_gates": [],
+      "selected_model": "gpt-5.6-luna",
+      "reasoning_effort": "xhigh",
+      "review_model": "gpt-5.6-luna",
+      "review_effort": "max",
+      "fork_turns": "none",
+      "execution_engine": "superpowers-sdd",
+      "context_files": ["briefs/QFR-LEGACY-001.md"],
+      "justification": "The historical task was clear, isolated, and low risk.",
+      "external_actions": [],
+      "github_write_authorized": false
+    },
+    "valid_blocked_external_action": {
+      "task_id": "QFR-LEGACY-002",
+      "role": "implementation",
+      "risk_signals": ["clear_isolated_low_risk"],
+      "hard_gates": [],
+      "selected_model": "gpt-5.6-luna",
+      "reasoning_effort": "xhigh",
+      "review_model": "gpt-5.6-luna",
+      "review_effort": "max",
+      "fork_turns": "none",
+      "execution_engine": "superpowers-sdd",
+      "context_files": ["briefs/QFR-LEGACY-002.md"],
+      "justification": "The local work is clear and its external action remains blocked.",
+      "external_actions": [
+        {
+          "action": "push",
+          "state": "blocked",
+          "authorized": false,
+          "preview": false,
+          "readback": false,
+          "target": "owner/repo:refs/heads/main"
+        }
+      ],
+      "github_write_authorized": false
+    },
+    "invalid_missing_lifecycle": {
+      "task_id": "QFR-LEGACY-003",
+      "role": "implementation",
+      "risk_signals": ["clear_isolated_low_risk"],
+      "hard_gates": [],
+      "selected_model": "gpt-5.6-luna",
+      "reasoning_effort": "xhigh",
+      "context_files": ["briefs/QFR-LEGACY-003.md"],
+      "justification": "This record omits the review lifecycle fields."
+    },
+    "invalid_recurrence_downroute": {
+      "task_id": "QFR-LEGACY-004",
+      "role": "implementation",
+      "risk_signals": ["clear_isolated_low_risk"],
+      "hard_gates": [],
+      "selected_model": "gpt-5.6-luna",
+      "reasoning_effort": "xhigh",
+      "review_model": "gpt-5.6-luna",
+      "review_effort": "max",
+      "fork_turns": "none",
+      "execution_engine": "superpowers-sdd",
+      "context_files": ["briefs/QFR-LEGACY-004.md"],
+      "justification": "A deadline request cannot lower a recurring failure route.",
+      "failure_history": [
+        {"defect_id": "shape-regression", "complete": true, "outcome": "failed"},
+        {"defect_id": "shape-regression", "complete": true, "outcome": "failed"}
+      ],
+      "same_defect": true,
+      "recurring_failure": true,
+      "current_defect_id": "shape-regression"
+    },
+    "invalid_malformed": {
+      "task_id": "QFR-LEGACY-005",
+      "role": "implementation",
+      "risk_signals": "not-an-array",
+      "hard_gates": [],
+      "selected_model": "gpt-5.6-luna",
+      "reasoning_effort": "xhigh",
+      "review_model": "gpt-5.6-luna",
+      "review_effort": "max",
+      "fork_turns": "none",
+      "execution_engine": "superpowers-sdd",
+      "context_files": ["briefs/QFR-LEGACY-005.md"],
+      "justification": "Malformed records fail closed."
+    }
+  }
+}

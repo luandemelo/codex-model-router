@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-occurrence-audit-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "scope_kind",
+    "scope_id",
+    "round_index",
+    "task_id",
+    "response_policy",
+    "model",
+    "reasoning_effort",
+    "fork_turns",
+    "prompt_sha256",
+    "thread_policy",
+    "thread_id",
+    "cwd",
+    "write_policy",
+    "exit_code",
+    "external_writes",
+    "transcript_sha256",
+    "raw_sha256",
+    "usage",
+    "tool_event_count",
+    "terminal_report_sha256",
+    "ignored_empty_agent_messages",
+    "accepted",
+    "failure_class",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-occurrence-audit-v1"
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "controller",
+        "preflight",
+        "worker",
+        "task_review",
+        "re_review",
+        "final_review"
+      ]
+    },
+    "scope_kind": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "task",
+        "release"
+      ]
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "round_index": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "task_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "response_policy": {
+      "type": "string",
+      "enum": [
+        "closed_json",
+        "sdd_report"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "enum": [
+        "gpt-5.6-luna",
+        "gpt-5.6-sol"
+      ]
+    },
+    "reasoning_effort": {
+      "type": "string",
+      "enum": [
+        "xhigh",
+        "max"
+      ]
+    },
+    "fork_turns": {
+      "const": "none"
+    },
+    "prompt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "thread_policy": {
+      "type": "string",
+      "enum": [
+        "fresh",
+        "resume"
+      ]
+    },
+    "thread_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cwd": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/EphemeralCwd"
+        },
+        {
+          "$ref": "#/$defs/PlanWorktreeCwd"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "write_policy": {
+      "type": "string",
+      "enum": [
+        "control_plane_no_write",
+        "worktree_write",
+        "source_read_only"
+      ]
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "external_writes": {
+      "type": "boolean"
+    },
+    "transcript_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "raw_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "usage": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/UsageEvidence"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tool_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "terminal_report_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ignored_empty_agent_messages": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "failure_class": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "operational",
+            "instrument"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "UsageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cached_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "EphemeralCwd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "fresh",
+        "destroyed",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ephemeral"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "fresh": {
+          "const": true
+        },
+        "destroyed": {
+          "const": true
+        },
+        "read_only": {
+          "const": true
+        }
+      }
+    },
+    "PlanWorktreeCwd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "workspace_id",
+        "base_head",
+        "head",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "plan_worktree"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_head": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "read_only": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

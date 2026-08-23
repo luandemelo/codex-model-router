@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-safe-lane-manifest-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan",
+    "certificate",
+    "planning_invocation",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-safe-lane-manifest-v1"
+    },
+    "plan": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "certificate": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "planning_invocation": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SafeLaneEntry"
+      },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SafeLaneEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "brief",
+        "reason_ids"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "brief": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "reason_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "clear_isolated_low_risk",
+              "single_module_bounded_change",
+              "read_only_or_reversible_local_work",
+              "approved_plan_no_open_design_decision"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "plan_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+  "tasks": [
+    {
+      "task_id": "T-001",
+      "selector": "run",
+      "dispatchable": true,
+      "completed_worker_rounds": [0, 1]
+    },
+    {
+      "task_id": "T-002",
+      "selector": "skip",
+      "dispatchable": true,
+      "completed_worker_rounds": [0]
+    },
+    {
+      "task_id": "T-003",
+      "selector": "block",
+      "dispatchable": false,
+      "completed_worker_rounds": []
+    }
+  ],
+  "release_review": {
+    "initial_implementation_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "initial_export_head": "dddddddddddddddddddddddddddddddddddddddd",
+    "fix_required": true,
+    "final_implementation_head": "cccccccccccccccccccccccccccccccccccccccc",
+    "final_export_head": "dddddddddddddddddddddddddddddddddddddddd"
+  },
+  "usage": {
+    "input_tokens": 101,
+    "cached_input_tokens": 17,
+    "cache_write_input_tokens": 5,
+    "output_tokens": 23,
+    "reasoning_output_tokens": 7
+  }
+}

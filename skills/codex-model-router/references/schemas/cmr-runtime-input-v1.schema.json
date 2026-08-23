@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-runtime-input-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_phase",
+    "current_defect_id",
+    "failure_history",
+    "review_scope",
+    "authorization_registry"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-runtime-input-v1"
+    },
+    "task_phase": {
+      "type": "string",
+      "enum": [
+        "implementation",
+        "final_review"
+      ]
+    },
+    "current_defect_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "failure_history": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/HistoryEntry"
+      }
+    },
+    "review_scope": {
+      "type": "string",
+      "enum": [
+        "task",
+        "branch"
+      ]
+    },
+    "authorization_registry": {
+      "$ref": "#/$defs/AuthorizationRegistry"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "task_phase": {
+            "const": "final_review"
+          }
+        },
+        "required": [
+          "task_phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "review_scope": {
+            "const": "branch"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "failure_history": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "failure_history"
+        ]
+      },
+      "then": {
+        "properties": {
+          "current_defect_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "HistoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "defect_id",
+        "event"
+      ],
+      "properties": {
+        "defect_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event": {
+          "type": "string",
+          "enum": [
+            "attempt_completed_failed",
+            "attempt_completed_passed",
+            "declared_resolved",
+            "reappeared"
+          ]
+        }
+      }
+    },
+    "AuthorizationRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "entries"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "cmr-authorization-registry-v1"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuthorizationEntry"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "AuthorizationEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "target",
+        "authorization_id",
+        "preview_sha256"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "github_authenticate",
+            "repository_create",
+            "repository_settings_update",
+            "repository_topics_update",
+            "issue_create",
+            "issue_update",
+            "issue_comment",
+            "push",
+            "pr_create",
+            "pr_update",
+            "merge",
+            "tag_create",
+            "release_create",
+            "deploy",
+            "install_skill",
+            "install_plugin",
+            "marketplace_publish"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authorization_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preview_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "readback_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-dispatch-bundle-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "brief",
+    "controller_evidence",
+    "runtime_input",
+    "candidate_decision",
+    "preflight_evidence",
+    "final_decision"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-dispatch-bundle-v1"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brief": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "controller_evidence": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "runtime_input": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "candidate_decision": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "preflight_evidence": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "final_decision": {
+      "$ref": "#/$defs/ArtifactRef"
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

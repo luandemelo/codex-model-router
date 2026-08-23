@@ -1,0 +1,101 @@
+{
+  "fact_ontology": [
+    {"id": "architecture", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["architecture_change"]},
+    {"id": "architecture_approved", "routing_class": "qualifier", "risk_projection": "low", "hard_gate": false, "derived_flags": ["architecture_approved"]},
+    {"id": "audit", "routing_class": "audit", "risk_projection": "low", "hard_gate": false, "derived_flags": ["audit"]},
+    {"id": "authentication", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["security"]},
+    {"id": "authorization", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["security"]},
+    {"id": "availability_or_integrity_impact", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]},
+    {"id": "backfill", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["data_change"]},
+    {"id": "billing", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["financial"]},
+    {"id": "clear_isolated_low_risk", "routing_class": "qualifier", "risk_projection": "low", "hard_gate": false, "derived_flags": ["clear_isolated_low_risk"]},
+    {"id": "complex_local_execution", "routing_class": "complex_local", "risk_projection": "low", "hard_gate": false, "derived_flags": ["complex_local"]},
+    {"id": "concurrency", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["concurrency_control"]},
+    {"id": "contract_coordination", "routing_class": "integration", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["integration"]},
+    {"id": "critical_integrity", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["integrity_or_irreversibility"]},
+    {"id": "critical_risk", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]},
+    {"id": "cross_module_integration", "routing_class": "integration", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["integration"]},
+    {"id": "cryptography", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["security"]},
+    {"id": "data_integrity", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]},
+    {"id": "destruction", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["integrity_or_irreversibility"]},
+    {"id": "distributed_consistency", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["concurrency_control"]},
+    {"id": "elevated_risk", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]},
+    {"id": "encryption", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["security"]},
+    {"id": "entitlement", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["financial"]},
+    {"id": "finding_critical", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["critical_finding"]},
+    {"id": "idempotency", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["concurrency_control"]},
+    {"id": "incident_risk", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]},
+    {"id": "integration_tests", "routing_class": "integration", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["integration"]},
+    {"id": "invoice", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["financial"]},
+    {"id": "irreversible_effect", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["integrity_or_irreversibility"]},
+    {"id": "judgment_required", "routing_class": "judgment", "risk_projection": "low", "hard_gate": false, "derived_flags": ["judgment"]},
+    {"id": "ledger_financial", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["financial"]},
+    {"id": "locks", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["concurrency_control"]},
+    {"id": "low_blast_radius", "routing_class": "qualifier", "risk_projection": "low", "hard_gate": false, "derived_flags": ["low_blast_radius"]},
+    {"id": "material_data_transformation", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["data_change"]},
+    {"id": "multi_module_integration", "routing_class": "integration", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["integration"]},
+    {"id": "multiple_plausible_tradeoffs", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["architecture_change"]},
+    {"id": "payment", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["financial"]},
+    {"id": "pii", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["sensitive_data"]},
+    {"id": "price", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["financial"]},
+    {"id": "public_api_structural_change", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["architecture_change"]},
+    {"id": "race_condition", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["concurrency_control"]},
+    {"id": "reconciliation", "routing_class": "reconciliation", "risk_projection": "low", "hard_gate": false, "derived_flags": ["reconciliation"]},
+    {"id": "regulated_data", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["sensitive_data"]},
+    {"id": "rollback", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["data_change"]},
+    {"id": "schema_migration", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["data_change"]},
+    {"id": "secrets", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["security"]},
+    {"id": "security_risk", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]},
+    {"id": "structural_conflict", "routing_class": "hard_gate", "risk_projection": "elevated", "hard_gate": true, "derived_flags": ["architecture_change"]},
+    {"id": "trust_boundary", "routing_class": "hard_gate", "risk_projection": "critical", "hard_gate": true, "derived_flags": ["security"]},
+    {"id": "untrusted_input", "routing_class": "elevated_risk", "risk_projection": "elevated", "hard_gate": false, "derived_flags": ["elevated_risk"]}
+  ],
+  "uncertainty_ids": [
+    "multiple_policy_facts",
+    "negation_contrast_or_condition",
+    "indirect_or_ambiguous_implication",
+    "controller_uncertainty"
+  ],
+  "safe_lane_reason_ids": [
+    "clear_isolated_low_risk",
+    "single_module_bounded_change",
+    "read_only_or_reversible_local_work",
+    "approved_plan_no_open_design_decision"
+  ],
+  "action_ontology": [
+    {"id": "github_authenticate", "target_kind": "github_account", "target_required": true},
+    {"id": "repository_create", "target_kind": "repository", "target_required": true},
+    {"id": "repository_settings_update", "target_kind": "repository", "target_required": true},
+    {"id": "repository_topics_update", "target_kind": "repository", "target_required": true},
+    {"id": "issue_create", "target_kind": "repository", "target_required": true},
+    {"id": "issue_update", "target_kind": "numbered_resource", "target_required": true},
+    {"id": "issue_comment", "target_kind": "numbered_resource", "target_required": true},
+    {"id": "push", "target_kind": "full_ref", "target_required": true},
+    {"id": "pr_create", "target_kind": "pull_request_create", "target_required": true},
+    {"id": "pr_update", "target_kind": "numbered_resource", "target_required": true},
+    {"id": "merge", "target_kind": "numbered_resource", "target_required": true},
+    {"id": "tag_create", "target_kind": "tag_ref", "target_required": true},
+    {"id": "release_create", "target_kind": "release_tag", "target_required": true},
+    {"id": "deploy", "target_kind": "environment", "target_required": true},
+    {"id": "install_skill", "target_kind": "absolute_path", "target_required": true},
+    {"id": "install_plugin", "target_kind": "absolute_path", "target_required": true},
+    {"id": "marketplace_publish", "target_kind": "marketplace_plugin", "target_required": true}
+  ],
+  "valid_controller": {
+    "schema_version": "cmr-controller-result-v1",
+    "fact_ids": ["clear_isolated_low_risk"],
+    "uncertainty_ids": [],
+    "action_intents": []
+  },
+  "valid_preflight": {
+    "accept": {"schema_version": "cmr-preflight-result-v1", "outcome": "accept"},
+    "replace": {"schema_version": "cmr-preflight-result-v1", "outcome": "replace", "fact_ids": [], "uncertainty_ids": [], "action_intents": []},
+    "block": {"schema_version": "cmr-preflight-result-v1", "outcome": "block", "blocker_ids": ["ambiguous_semantics"]}
+  },
+  "valid_planner": {
+    "schema_version": "cmr-planner-result-v1",
+    "safe_lanes": [
+      {"task_id": "T-001", "reason_ids": ["clear_isolated_low_risk"]}
+    ]
+  }
+}

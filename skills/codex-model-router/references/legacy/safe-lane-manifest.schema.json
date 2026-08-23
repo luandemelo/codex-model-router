@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quality-first-routing.local/references/safe-lane-manifest.schema.json",
+  "title": "Quality-First Frozen Safe-Lane Manifest",
+  "description": "Documentary-only historical safe-lane manifest; it cannot authorize dispatch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan",
+    "certificate",
+    "invocation",
+    "entries",
+    "briefs"
+  ],
+  "properties": {
+    "schema_version": {"const": "qfr-safe-lane-manifest-v1"},
+    "plan": {"$ref": "#/$defs/artifactReference"},
+    "certificate": {"$ref": "#/$defs/artifactReference"},
+    "invocation": {"$ref": "#/$defs/artifactReference"},
+    "entries": {
+      "description": "Exact certificate entries; the CLI enforces unique task_id+brief_sha256 keys.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/safeLaneEntry"}
+    },
+    "briefs": {
+      "description": "Closed task/brief references matching the entry keys.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "brief"],
+        "properties": {
+          "task_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "brief": {"$ref": "#/$defs/artifactReference"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+        },
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "safeLaneEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "brief_sha256", "route", "justification"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "brief_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "route": {"const": "luna_xhigh"},
+        "justification": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    }
+  }
+}

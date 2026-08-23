@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-planning-invocation-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "purpose",
+    "plan",
+    "prompt",
+    "raw",
+    "transcript",
+    "occurrence",
+    "certificate",
+    "model",
+    "reasoning_effort",
+    "fork_turns",
+    "thread_id",
+    "cwd",
+    "exit_code",
+    "external_writes",
+    "usage"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-planning-invocation-v1"
+    },
+    "phase": {
+      "const": "planning"
+    },
+    "purpose": {
+      "const": "canonical_planning"
+    },
+    "plan": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "prompt": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "raw": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "transcript": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "occurrence": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "certificate": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "model": {
+      "const": "gpt-5.6-sol"
+    },
+    "reasoning_effort": {
+      "const": "max"
+    },
+    "fork_turns": {
+      "const": "none"
+    },
+    "thread_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cwd": {
+      "$ref": "#/$defs/CwdEvidence"
+    },
+    "exit_code": {
+      "const": 0
+    },
+    "external_writes": {
+      "const": false
+    },
+    "usage": {
+      "$ref": "#/$defs/UsageEvidence"
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "UsageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cached_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CwdEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "fresh",
+        "destroyed",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ephemeral"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "fresh": {
+          "const": true
+        },
+        "destroyed": {
+          "const": true
+        },
+        "read_only": {
+          "const": true
+        }
+      }
+    }
+  }
+}

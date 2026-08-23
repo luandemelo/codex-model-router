@@ -1,0 +1,144 @@
+{
+  "route_cases": {
+    "default": {
+      "fact_ids": [],
+      "worker": ["gpt-5.6-luna", "xhigh"],
+      "review": ["gpt-5.6-luna", "max"],
+      "role": "implementation",
+      "risk_level": "low",
+      "decisive_reason_id": "default_clear_isolated_work"
+    },
+    "qualifier_only": {
+      "fact_ids": ["clear_isolated_low_risk"],
+      "worker": ["gpt-5.6-luna", "xhigh"],
+      "review": ["gpt-5.6-luna", "max"],
+      "role": "implementation",
+      "risk_level": "low",
+      "decisive_reason_id": "default_clear_isolated_work"
+    },
+    "audit": {
+      "fact_ids": ["audit", "low_blast_radius"],
+      "worker": ["gpt-5.6-luna", "max"],
+      "review": ["gpt-5.6-luna", "max"],
+      "role": "audit",
+      "risk_level": "low",
+      "decisive_reason_id": "audit"
+    },
+    "reconciliation": {
+      "fact_ids": ["low_blast_radius", "reconciliation"],
+      "worker": ["gpt-5.6-luna", "max"],
+      "review": ["gpt-5.6-luna", "max"],
+      "role": "reconciliation",
+      "risk_level": "low",
+      "decisive_reason_id": "reconciliation"
+    },
+    "judgment": {
+      "fact_ids": ["judgment_required", "low_blast_radius"],
+      "worker": ["gpt-5.6-luna", "max"],
+      "review": ["gpt-5.6-luna", "max"],
+      "role": "judgment",
+      "risk_level": "low",
+      "decisive_reason_id": "judgment_required"
+    },
+    "approved_complex_local": {
+      "fact_ids": ["architecture_approved", "complex_local_execution"],
+      "worker": ["gpt-5.6-luna", "max"],
+      "review": ["gpt-5.6-luna", "max"],
+      "role": "implementation",
+      "risk_level": "low",
+      "decisive_reason_id": "complex_local_execution"
+    },
+    "integration": {
+      "fact_ids": ["cross_module_integration"],
+      "worker": ["gpt-5.6-sol", "xhigh"],
+      "review": ["gpt-5.6-sol", "xhigh"],
+      "role": "implementation",
+      "risk_level": "elevated",
+      "decisive_reason_id": "cross_module_integration"
+    },
+    "elevated": {
+      "fact_ids": ["untrusted_input"],
+      "worker": ["gpt-5.6-sol", "xhigh"],
+      "review": ["gpt-5.6-sol", "xhigh"],
+      "role": "implementation",
+      "risk_level": "elevated",
+      "decisive_reason_id": "untrusted_input"
+    },
+    "hard_gate": {
+      "fact_ids": ["schema_migration"],
+      "worker": ["gpt-5.6-sol", "max"],
+      "review": ["gpt-5.6-sol", "max"],
+      "role": "implementation",
+      "risk_level": "elevated",
+      "decisive_reason_id": "schema_migration"
+    },
+    "hard_gate_over_integration": {
+      "fact_ids": ["cross_module_integration", "schema_migration"],
+      "worker": ["gpt-5.6-sol", "max"],
+      "review": ["gpt-5.6-sol", "max"],
+      "role": "implementation",
+      "risk_level": "elevated",
+      "decisive_reason_id": "schema_migration"
+    },
+    "integration_over_audit": {
+      "fact_ids": ["audit", "cross_module_integration", "low_blast_radius"],
+      "worker": ["gpt-5.6-sol", "xhigh"],
+      "review": ["gpt-5.6-sol", "xhigh"],
+      "role": "audit",
+      "risk_level": "elevated",
+      "decisive_reason_id": "cross_module_integration"
+    }
+  },
+  "hard_gate_facts": [
+    "architecture",
+    "authentication",
+    "authorization",
+    "backfill",
+    "billing",
+    "concurrency",
+    "critical_integrity",
+    "cryptography",
+    "destruction",
+    "distributed_consistency",
+    "encryption",
+    "entitlement",
+    "finding_critical",
+    "idempotency",
+    "invoice",
+    "irreversible_effect",
+    "ledger_financial",
+    "locks",
+    "material_data_transformation",
+    "multiple_plausible_tradeoffs",
+    "payment",
+    "pii",
+    "price",
+    "public_api_structural_change",
+    "race_condition",
+    "regulated_data",
+    "rollback",
+    "schema_migration",
+    "secrets",
+    "structural_conflict",
+    "trust_boundary"
+  ],
+  "valid_action_targets": {
+    "github_authenticate": "github.com/account/codex-user",
+    "repository_create": "owner/repo",
+    "repository_settings_update": "owner/repo",
+    "repository_topics_update": "owner/repo",
+    "issue_create": "owner/repo",
+    "issue_update": "owner/repo#12",
+    "issue_comment": "owner/repo#12",
+    "push": "owner/repo:refs/heads/main",
+    "pr_create": "owner/repo:refs/heads/main<-refs/heads/feature",
+    "pr_update": "owner/repo#13",
+    "merge": "owner/repo#14",
+    "tag_create": "owner/repo:refs/tags/v0.4.0",
+    "release_create": "owner/repo:v0.4.0",
+    "deploy": "owner/repo:production",
+    "install_skill": "/opt/Codex Skills/codex-model-router",
+    "install_plugin": "C:/Codex/plugins/codex-model-router",
+    "marketplace_publish": "community/codex-model-router"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-planner-result-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "safe_lanes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-planner-result-v1"
+    },
+    "safe_lanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "reason_ids"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "clear_isolated_low_risk",
+                "single_module_bounded_change",
+                "read_only_or_reversible_local_work",
+                "approved_plan_no_open_design_decision"
+              ]
+            },
+            "uniqueItems": true
+          }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "codex-model-router",
+  "version": "0.4.0",
+  "description": "Quality-first Luna/Sol routing for Codex development tasks.",
+  "author": {
+    "name": "Luan de Melo",
+    "url": "https://github.com/luandemelo"
+  },
+  "homepage": "https://github.com/luandemelo/codex-model-router",
+  "repository": "https://github.com/luandemelo/codex-model-router",
+  "license": "Apache-2.0",
+  "keywords": ["codex", "model-routing", "multi-agent", "luna", "sol"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Model Router",
+    "shortDescription": "Quality-first Luna and Sol task routing",
+    "longDescription": "Routes Codex development work through deterministic quality gates, fresh context, and independent review.",
+    "developerName": "Luan de Melo",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive"],
+    "websiteURL": "https://github.com/luandemelo/codex-model-router",
+    "defaultPrompt": [
+      "Route this development task with $codex-model-router."
+    ]
+  }
+}
