@@ -97,7 +97,18 @@ $skill-installer Install the skill from https://github.com/luandemelo/codex-mode
 The installed skill becomes available on the next turn. Start a fresh
 conversation before evaluating its routing behavior.
 
-### 3. Route a development task
+### 3. Select the controller model and effort
+
+Before invoking CMR for a new development task, select **GPT-5.6 Luna** with
+**Extra High (`xhigh`)** reasoning effort in the Codex model picker. This is the
+controller route required by the CMR contract. Do not select Sol manually for
+the controller, and do not use low, medium, or high effort.
+
+CMR chooses the worker and reviewer routes after it validates the task facts.
+The active conversation is not retroactively switched to another model; start
+the task with the controller configuration above.
+
+### 4. Route a development task
 
 Invoke the skill explicitly and include the task, constraints, and relevant
 repository context:
