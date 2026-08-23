@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, Mapping
+from unittest import mock
 
 sys.dont_write_bytecode = True
 
@@ -210,6 +211,8 @@ class SkillContractTests(unittest.TestCase):
 
     def test_quick_validator_is_the_frontmatter_contract(self) -> None:
         validator = Path.home() / ".codex/skills/.system/skill-creator/scripts/quick_validate.py"
+        if not validator.is_file():
+            self.skipTest("official quick validator unavailable on this host")
         completed = subprocess.run(
             [sys.executable, str(validator), str(SKILL_ROOT)],
             capture_output=True,
@@ -219,6 +222,15 @@ class SkillContractTests(unittest.TestCase):
         if completed.returncode and "No module named 'yaml'" in completed.stderr:
             self.skipTest("official quick validator dependency unavailable: PyYAML")
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
+    def test_quick_validator_is_skipped_when_tool_is_not_installed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with mock.patch.object(Path, "home", return_value=Path(temporary)):
+                with self.assertRaisesRegex(
+                    unittest.SkipTest,
+                    "official quick validator unavailable on this host",
+                ):
+                    self.test_quick_validator_is_the_frontmatter_contract()
 
 
 if __name__ == "__main__":
