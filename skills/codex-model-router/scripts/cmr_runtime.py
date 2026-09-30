@@ -63,21 +63,21 @@ _OCCURRENCE_RECORD_FIELDS = frozenset(
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _HEAD_RE = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 _CONTROL_ROUTES = {
-    "planning": ("gpt-5.6-sol", "max"),
-    "controller": ("gpt-5.6-luna", "xhigh"),
-    "preflight": ("gpt-5.6-luna", "max"),
+    "planning": ("gpt-6-astra", "max"),
+    "controller": ("gpt-6-luna", "medium"),
+    "preflight": ("gpt-6-sol", "medium"),
 }
 _ROUND_FOUR_ROUTES = {
-    ("gpt-5.6-luna", "xhigh"): ("gpt-5.6-luna", "max"),
-    ("gpt-5.6-luna", "max"): ("gpt-5.6-sol", "max"),
-    ("gpt-5.6-sol", "xhigh"): ("gpt-5.6-sol", "max"),
-    ("gpt-5.6-sol", "max"): ("gpt-5.6-sol", "max"),
+    ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
+    ("gpt-6-sol", "medium"): ("gpt-6-astra", "max"),
+    ("gpt-6-sol", "high"): ("gpt-6-astra", "max"),
+    ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
 }
 _REVIEW_ROUTES = {
-    ("gpt-5.6-luna", "xhigh"): ("gpt-5.6-luna", "max"),
-    ("gpt-5.6-luna", "max"): ("gpt-5.6-luna", "max"),
-    ("gpt-5.6-sol", "xhigh"): ("gpt-5.6-sol", "xhigh"),
-    ("gpt-5.6-sol", "max"): ("gpt-5.6-sol", "max"),
+    ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
+    ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
+    ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
+    ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
 }
 _TOOL_ITEM_TYPES = {
     "command_execution",
@@ -147,9 +147,9 @@ class OccurrenceExpectation:
 
         if scope_kind == "release":
             if phase == "final_review" and round_index is None:
-                route = ("gpt-5.6-sol", "max")
+                route = ("gpt-6-astra", "max")
             elif phase in {"worker", "re_review"} and round_index == 1:
-                route = ("gpt-5.6-sol", "max")
+                route = ("gpt-6-astra", "max")
             else:
                 raise ValueError("release SDD occurrence has an invalid phase or round")
         elif scope_kind == "task":
@@ -201,7 +201,7 @@ def _worker_route(
     if round_index == 4:
         return _ROUND_FOUR_ROUTES[initial_route]
     if round_index == 5:
-        return ("gpt-5.6-sol", "max")
+        return ("gpt-6-astra", "max")
     raise ValueError("task worker round must be between 0 and 5")
 
 
@@ -842,16 +842,18 @@ def _validate_occurrence_record(value: Any) -> list[str]:
     if expected_response_policy is not None and response_policy != expected_response_policy:
         errors.append("response_policy conflicts with phase")
 
-    if not isinstance(model, str) or model not in {"gpt-5.6-luna", "gpt-5.6-sol"}:
+    if not isinstance(model, str) or model not in {"gpt-6-luna", "gpt-6-sol", "gpt-6-astra"}:
         errors.append("model is outside the public route matrix")
-    if not isinstance(effort, str) or effort not in {"xhigh", "max"}:
+    if not isinstance(effort, str) or effort not in {"medium", "high", "max"}:
         errors.append("reasoning_effort is outside the public route matrix")
     route = (model, effort)
+    if isinstance(model, str) and isinstance(effort, str) and route not in _ROUND_FOUR_ROUTES:
+        errors.append("model/reasoning_effort is outside the public route matrix")
     if isinstance(phase, str) and phase in _CONTROL_ROUTES and route != _CONTROL_ROUTES[phase]:
         errors.append("model/reasoning_effort conflicts with phase and round")
     if isinstance(phase, str) and phase in {"task_review", "re_review", "final_review"} and route == (
-        "gpt-5.6-luna",
-        "xhigh",
+        "gpt-6-luna",
+        "medium",
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
     if (
@@ -859,7 +861,8 @@ def _validate_occurrence_record(value: Any) -> list[str]:
         and phase in {"worker", "re_review"}
         and scope_kind == "task"
         and round_index == 4
-        and effort != "max"
+        and route != ("gpt-6-sol", "medium")
+        and route != ("gpt-6-astra", "max")
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
     if (
@@ -867,11 +870,11 @@ def _validate_occurrence_record(value: Any) -> list[str]:
         and phase in {"worker", "re_review"}
         and scope_kind == "task"
         and round_index == 5
-        and route != ("gpt-5.6-sol", "max")
+        and route != ("gpt-6-astra", "max")
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
     if scope_kind == "release" and isinstance(phase, str) and phase in _SDD_PHASES and route != (
-        "gpt-5.6-sol",
+        "gpt-6-astra",
         "max",
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
@@ -1073,24 +1076,25 @@ def _validate_expectation(expected: OccurrenceExpectation) -> list[str]:
     if route not in _ROUND_FOUR_ROUTES:
         errors.append("expectation route is outside the public model/effort matrix")
     if expected.phase in {"task_review", "re_review", "final_review"} and route == (
-        "gpt-5.6-luna",
-        "xhigh",
+        "gpt-6-luna",
+        "medium",
     ):
-        errors.append("expectation review route cannot be gpt-5.6-luna/xhigh")
+        errors.append("expectation review route cannot be gpt-6-luna/medium")
     if (
         expected.scope_kind == "task"
         and expected.phase in {"worker", "re_review"}
         and expected.round_index == 4
-        and expected.reasoning_effort != "max"
+        and route != ("gpt-6-sol", "medium")
+        and route != ("gpt-6-astra", "max")
     ):
-        errors.append("expectation round-4 route must use max effort")
+        errors.append("expectation round-4 route must be escalated")
     if (
         expected.scope_kind == "task"
         and expected.phase in {"worker", "re_review"}
         and expected.round_index == 5
-        and route != ("gpt-5.6-sol", "max")
+        and route != ("gpt-6-astra", "max")
     ):
-        errors.append("expectation round-5 route must be gpt-5.6-sol/max")
+        errors.append("expectation round-5 route must be gpt-6-astra/max")
     if expected.phase not in _ALL_PHASES:
         errors.append("expectation.phase is unknown")
     expected_response = (
@@ -1178,8 +1182,8 @@ def _validate_expectation(expected: OccurrenceExpectation) -> list[str]:
         if expected.phase in {"worker", "re_review", "final_review"} and (
             expected.model,
             expected.reasoning_effort,
-        ) != ("gpt-5.6-sol", "max"):
-            errors.append("release expectation route must be gpt-5.6-sol/max")
+        ) != ("gpt-6-astra", "max"):
+            errors.append("release expectation route must be gpt-6-astra/max")
     else:
         valid_cardinality = False
     if not valid_cardinality:

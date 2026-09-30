@@ -97,8 +97,8 @@ class CompilerTests(unittest.TestCase):
             scope_id=task_id,
             round_index=None,
             task_id=task_id,
-            model="gpt-5.6-luna",
-            reasoning_effort="xhigh",
+            model="gpt-6-luna",
+            reasoning_effort="medium",
             prompt_sha256=brief.sha256,
             forbidden_thread_ids=(),
             prior_thread_id=None,
@@ -367,10 +367,10 @@ class CompilerTests(unittest.TestCase):
 
     def test_route_matrix_is_derived_not_model_authored(self) -> None:
         expected = {
-            "default": ("gpt-5.6-luna", "xhigh", "gpt-5.6-luna", "max"),
-            "audit": ("gpt-5.6-luna", "max", "gpt-5.6-luna", "max"),
-            "integration": ("gpt-5.6-sol", "xhigh", "gpt-5.6-sol", "xhigh"),
-            "hard_gate": ("gpt-5.6-sol", "max", "gpt-5.6-sol", "max"),
+            "default": ("gpt-6-luna", "medium", "gpt-6-sol", "medium"),
+            "audit": ("gpt-6-sol", "medium", "gpt-6-sol", "medium"),
+            "integration": ("gpt-6-sol", "high", "gpt-6-sol", "high"),
+            "hard_gate": ("gpt-6-astra", "max", "gpt-6-astra", "max"),
         }
         for case_id, want in expected.items():
             decision = self.compile_case(case_id)
@@ -381,6 +381,36 @@ class CompilerTests(unittest.TestCase):
                 decision["review"]["reasoning_effort"],
             )
             self.assertEqual(got, want, case_id)
+
+    def test_gpt6_route_precedence_and_independent_review(self) -> None:
+        routes = {
+            "default": (("gpt-6-luna", "medium"), ("gpt-6-sol", "medium")),
+            "audit": (("gpt-6-sol", "medium"), ("gpt-6-sol", "medium")),
+            "integration": (("gpt-6-sol", "high"), ("gpt-6-sol", "high")),
+            "hard_gate_over_integration": (("gpt-6-astra", "max"), ("gpt-6-astra", "max")),
+        }
+        for case_id, (worker, review) in routes.items():
+            with self.subTest(case_id=case_id):
+                decision = self.compile_case(case_id)
+                self.assertEqual(tuple(decision["worker"].values()), worker)
+                self.assertEqual(tuple(decision["review"].values()), review)
+
+        recurrence = compiler.compile_route(
+            self.bound_evidence(["cross_module_integration"]),
+            self.runtime_input(
+                current_defect_id="same-defect",
+                failure_history=[
+                    {"defect_id": "same-defect", "event": "attempt_completed_failed"},
+                    {"defect_id": "same-defect", "event": "attempt_completed_failed"},
+                ],
+            ),
+            self.ontologies,
+        )
+        self.assertEqual(
+            recurrence["worker"],
+            {"model": "gpt-6-astra", "reasoning_effort": "max"},
+        )
+        self.assertEqual(recurrence["decisive_reason_id"], "recurring_failure")
 
     def test_every_literal_route_case_has_absolute_review_and_stable_reason(self) -> None:
         for case_id, case in self.fixture["route_cases"].items():
@@ -406,7 +436,7 @@ class CompilerTests(unittest.TestCase):
                     f'{case["review"][0]}/{case["review"][1]}.',
                 )
 
-    def test_every_hard_gate_fact_selects_sol_max_and_ontology_projections(self) -> None:
+    def test_every_hard_gate_fact_selects_astra_max_and_ontology_projections(self) -> None:
         fact_entries = {entry["id"]: dict(entry) for entry in self.ontologies.fact_entries}
         for fact_id in self.fixture["hard_gate_facts"]:
             with self.subTest(fact_id=fact_id):
@@ -418,7 +448,7 @@ class CompilerTests(unittest.TestCase):
                 entry = fact_entries[fact_id]
                 self.assertEqual(
                     decision["worker"],
-                    {"model": "gpt-5.6-sol", "reasoning_effort": "max"},
+                    {"model": "gpt-6-astra", "reasoning_effort": "max"},
                 )
                 self.assertEqual(decision["risk_signals"], [fact_id])
                 self.assertEqual(decision["hard_gates"], [fact_id])
@@ -521,8 +551,8 @@ class CompilerTests(unittest.TestCase):
             self.ontologies,
         )
         self.assertEqual(decision["role"], "final_review")
-        self.assertEqual(decision["worker"], {"model": "gpt-5.6-sol", "reasoning_effort": "max"})
-        self.assertEqual(decision["review"], {"model": "gpt-5.6-sol", "reasoning_effort": "max"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6-astra", "reasoning_effort": "max"})
+        self.assertEqual(decision["review"], {"model": "gpt-6-astra", "reasoning_effort": "max"})
         self.assertEqual(decision["decisive_reason_id"], "branch_final_review")
 
         for invalid_runtime in (
@@ -545,7 +575,7 @@ class CompilerTests(unittest.TestCase):
             one_decision["recurrence"],
             {"active": False, "reason_id": None, "defect_id": None},
         )
-        self.assertEqual(one_decision["worker"]["model"], "gpt-5.6-luna")
+        self.assertEqual(one_decision["worker"]["model"], "gpt-6-luna")
 
         two = one + [
             {"defect_id": "defect a", "event": "attempt_completed_failed"}
@@ -565,7 +595,7 @@ class CompilerTests(unittest.TestCase):
         )
         self.assertEqual(
             two_decision["worker"],
-            {"model": "gpt-5.6-sol", "reasoning_effort": "max"},
+            {"model": "gpt-6-astra", "reasoning_effort": "max"},
         )
         self.assertEqual(two_decision["decisive_reason_id"], "recurring_failure")
 
@@ -599,7 +629,7 @@ class CompilerTests(unittest.TestCase):
                 "defect_id": "defect_a",
             },
         )
-        self.assertEqual(decision["worker"], {"model": "gpt-5.6-sol", "reasoning_effort": "max"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6-astra", "reasoning_effort": "max"})
         self.assertEqual(
             decision["decisive_reason_id"], "regression_after_declared_resolved"
         )
@@ -653,7 +683,7 @@ class CompilerTests(unittest.TestCase):
                 self.assertTrue(decision["recurrence"]["active"])
                 self.assertEqual(
                     decision["worker"],
-                    {"model": "gpt-5.6-sol", "reasoning_effort": "max"},
+                    {"model": "gpt-6-astra", "reasoning_effort": "max"},
                 )
 
     def test_all_external_action_target_forms_compile_only_exact_registry_pairs(self) -> None:
@@ -722,7 +752,7 @@ class CompilerTests(unittest.TestCase):
             self.runtime_input(entries=registry),
             self.ontologies,
         )
-        self.assertEqual(decision["worker"], {"model": "gpt-5.6-luna", "reasoning_effort": "xhigh"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "medium"})
         self.assertEqual(decision["status"], "ready")
         self.assertEqual(
             [item["state"] for item in decision["external_actions"]],
@@ -802,7 +832,7 @@ class CompilerTests(unittest.TestCase):
         )
         self.assertEqual(decision["status"], "ready")
         self.assertEqual(decision["blocker_ids"], [])
-        self.assertEqual(decision["worker"], {"model": "gpt-5.6-luna", "reasoning_effort": "xhigh"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "medium"})
 
     def test_malformed_or_duplicate_authorization_registry_fails_closed(self) -> None:
         valid = {
@@ -966,7 +996,7 @@ class CompilerTests(unittest.TestCase):
                 mutate(changed)
                 self.assert_compilation_blocker(blocker_id, changed, runtime)
 
-    def test_route_evidence_occurrence_is_controller_luna_xhigh_only(self) -> None:
+    def test_route_evidence_occurrence_is_controller_luna_medium_only(self) -> None:
         mutations = (
             ("preflight-max", "preflight", "max"),
             ("controller-max", "controller", "max"),
@@ -990,8 +1020,8 @@ class CompilerTests(unittest.TestCase):
         ]
         occurrence = schema["$defs"]["OccurrenceEvidence"]["properties"]
         self.assertEqual(occurrence["phase"], {"const": "controller"})
-        self.assertEqual(occurrence["model"], {"const": "gpt-5.6-luna"})
-        self.assertEqual(occurrence["reasoning_effort"], {"const": "xhigh"})
+        self.assertEqual(occurrence["model"], {"const": "gpt-6-luna"})
+        self.assertEqual(occurrence["reasoning_effort"], {"const": "medium"})
 
     def test_decisive_reason_tie_break_is_literal(self) -> None:
         history = [
@@ -1189,9 +1219,9 @@ class CompilerTests(unittest.TestCase):
         self.assertEqual(
             review_routes,
             {
-                ("gpt-5.6-luna", "max"),
-                ("gpt-5.6-sol", "xhigh"),
-                ("gpt-5.6-sol", "max"),
+                ("gpt-6-sol", "medium"),
+                ("gpt-6-sol", "high"),
+                ("gpt-6-astra", "max"),
             },
         )
         reason_ids = decision["properties"]["decisive_reason_id"]["enum"]

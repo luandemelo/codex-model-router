@@ -377,28 +377,72 @@
       }
     },
     "Route": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "model",
-        "reasoning_effort"
-      ],
-      "properties": {
-        "model": {
-          "type": "string",
-          "enum": [
-            "gpt-5.6-luna",
-            "gpt-5.6-sol"
-          ]
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model",
+            "reasoning_effort"
+          ],
+          "properties": {
+            "model": {
+              "const": "gpt-6-luna"
+            },
+            "reasoning_effort": {
+              "const": "medium"
+            }
+          }
         },
-        "reasoning_effort": {
-          "type": "string",
-          "enum": [
-            "xhigh",
-            "max"
-          ]
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model",
+            "reasoning_effort"
+          ],
+          "properties": {
+            "model": {
+              "const": "gpt-6-sol"
+            },
+            "reasoning_effort": {
+              "const": "medium"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model",
+            "reasoning_effort"
+          ],
+          "properties": {
+            "model": {
+              "const": "gpt-6-sol"
+            },
+            "reasoning_effort": {
+              "const": "high"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model",
+            "reasoning_effort"
+          ],
+          "properties": {
+            "model": {
+              "const": "gpt-6-astra"
+            },
+            "reasoning_effort": {
+              "const": "max"
+            }
+          }
         }
-      }
+      ]
     },
     "ReviewRoute": {
       "oneOf": [
@@ -411,10 +455,10 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-5.6-luna"
+              "const": "gpt-6-sol"
             },
             "reasoning_effort": {
-              "const": "max"
+              "const": "medium"
             }
           }
         },
@@ -427,10 +471,10 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-5.6-sol"
+              "const": "gpt-6-sol"
             },
             "reasoning_effort": {
-              "const": "xhigh"
+              "const": "high"
             }
           }
         },
@@ -443,7 +487,7 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-5.6-sol"
+              "const": "gpt-6-astra"
             },
             "reasoning_effort": {
               "const": "max"

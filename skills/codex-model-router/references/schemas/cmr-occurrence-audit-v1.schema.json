@@ -92,14 +92,16 @@
     "model": {
       "type": "string",
       "enum": [
-        "gpt-5.6-luna",
-        "gpt-5.6-sol"
+        "gpt-6-luna",
+        "gpt-6-sol",
+        "gpt-6-astra"
       ]
     },
     "reasoning_effort": {
       "type": "string",
       "enum": [
-        "xhigh",
+        "medium",
+        "high",
         "max"
       ]
     },
@@ -225,6 +227,52 @@
       "uniqueItems": true
     }
   },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "model": {
+              "const": "gpt-6-luna"
+            },
+            "reasoning_effort": {
+              "const": "medium"
+            }
+          }
+        },
+        {
+          "properties": {
+            "model": {
+              "const": "gpt-6-sol"
+            },
+            "reasoning_effort": {
+              "const": "medium"
+            }
+          }
+        },
+        {
+          "properties": {
+            "model": {
+              "const": "gpt-6-sol"
+            },
+            "reasoning_effort": {
+              "const": "high"
+            }
+          }
+        },
+        {
+          "properties": {
+            "model": {
+              "const": "gpt-6-astra"
+            },
+            "reasoning_effort": {
+              "const": "max"
+            }
+          }
+        }
+      ]
+    }
+  ],
   "$defs": {
     "UsageEvidence": {
       "type": "object",

@@ -81,9 +81,9 @@ class RuntimeTests(unittest.TestCase):
         forbidden_thread_ids: tuple[str, ...] = ("thread-used-before",),
     ) -> runtime.OccurrenceExpectation:
         routes = {
-            "planning": ("gpt-5.6-sol", "max"),
-            "controller": ("gpt-5.6-luna", "xhigh"),
-            "preflight": ("gpt-5.6-luna", "max"),
+            "planning": ("gpt-6-astra", "max"),
+            "controller": ("gpt-6-luna", "medium"),
+            "preflight": ("gpt-6-sol", "medium"),
         }
         if phase == "planning":
             scope_kind = "plan"
@@ -117,8 +117,8 @@ class RuntimeTests(unittest.TestCase):
         *,
         phase: str = "worker",
         round_index: int | None = 0,
-        initial_model: str = "gpt-5.6-luna",
-        initial_effort: str = "xhigh",
+        initial_model: str = "gpt-6-luna",
+        initial_effort: str = "medium",
         scope_kind: str = "task",
         scope_id: str = "T-001",
         task_id: str | None = "T-001",
@@ -222,6 +222,43 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(expected.__dataclass_params__.frozen)
         with self.assertRaises(dataclasses.FrozenInstanceError):
             expected.phase = "planning"
+
+    def test_gpt6_control_phases_bind_exact_supported_routes(self) -> None:
+        routes = {
+            "planning": ("gpt-6-astra", "max", "planning_json", self.validate_planner),
+            "controller": ("gpt-6-luna", "medium", "controller_json", self.validate_controller),
+            "preflight": ("gpt-6-sol", "medium", "preflight_json", self.validate_preflight),
+        }
+        for phase, (model, effort, fixture, validator) in routes.items():
+            with self.subTest(phase=phase):
+                expected = dataclasses.replace(
+                    self.control_expectation(phase), model=model, reasoning_effort=effort
+                )
+                audit = self.audit(
+                    fixture, expected, validator, thread_id=f"thread-{phase}-001"
+                )
+                self.assertTrue(audit.accepted, audit.errors)
+                for old_model, old_effort in (
+                    ("gpt-5.6-luna", "xhigh"),
+                    ("gpt-5.6-sol", "max"),
+                    ("gpt-6.1-sol", "high"),
+                ):
+                    old = dataclasses.replace(
+                        expected, model=old_model, reasoning_effort=old_effort
+                    )
+                    rejected = self.audit(
+                        fixture, old, validator, thread_id=f"thread-{phase}-001"
+                    )
+                    self.assertFalse(rejected.accepted)
+
+    def test_gpt6_sdd_constructor_rejects_old_and_unavailable_models(self) -> None:
+        for model, effort in (
+            ("gpt-5.6-luna", "xhigh"),
+            ("gpt-5.6-sol", "max"),
+            ("gpt-6.1-sol", "high"),
+        ):
+            with self.subTest(model=model, effort=effort), self.assertRaises(ValueError):
+                self.sdd_expectation(initial_model=model, initial_effort=effort)
 
     def test_usage_evidence_requires_exact_five_nonnegative_integer_fields(self) -> None:
         value = {
@@ -375,7 +412,7 @@ class RuntimeTests(unittest.TestCase):
                 self.sdd_expectation(
                     phase="final_review",
                     round_index=None,
-                    initial_model="gpt-5.6-sol",
+                    initial_model="gpt-6-astra",
                     initial_effort="max",
                     scope_kind="release",
                     scope_id=release_id,
@@ -486,7 +523,7 @@ class RuntimeTests(unittest.TestCase):
                     expected = self.sdd_expectation(
                         phase=phase,
                         round_index=round_index,
-                        initial_model="gpt-5.6-sol",
+                        initial_model="gpt-6-astra",
                         initial_effort="max",
                         scope_kind="release",
                         scope_id=scope_id,
@@ -749,16 +786,16 @@ class RuntimeTests(unittest.TestCase):
 
     def test_fix_escalation_and_matching_re_review_routes_are_derived(self) -> None:
         round_four_routes = {
-            ("gpt-5.6-luna", "xhigh"): ("gpt-5.6-luna", "max"),
-            ("gpt-5.6-luna", "max"): ("gpt-5.6-sol", "max"),
-            ("gpt-5.6-sol", "xhigh"): ("gpt-5.6-sol", "max"),
-            ("gpt-5.6-sol", "max"): ("gpt-5.6-sol", "max"),
+            ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
+            ("gpt-6-sol", "medium"): ("gpt-6-astra", "max"),
+            ("gpt-6-sol", "high"): ("gpt-6-astra", "max"),
+            ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
         }
         review_routes = {
-            ("gpt-5.6-luna", "xhigh"): ("gpt-5.6-luna", "max"),
-            ("gpt-5.6-luna", "max"): ("gpt-5.6-luna", "max"),
-            ("gpt-5.6-sol", "xhigh"): ("gpt-5.6-sol", "xhigh"),
-            ("gpt-5.6-sol", "max"): ("gpt-5.6-sol", "max"),
+            ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
+            ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
+            ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
+            ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
         }
         for initial_route, round_four_route in round_four_routes.items():
             with self.subTest(initial_route=initial_route):
@@ -785,7 +822,7 @@ class RuntimeTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     (worker_five.model, worker_five.reasoning_effort),
-                    ("gpt-5.6-sol", "max"),
+                    ("gpt-6-astra", "max"),
                 )
 
                 re_review_four = self.sdd_expectation(
@@ -808,8 +845,8 @@ class RuntimeTests(unittest.TestCase):
         escalated_review = self.sdd_expectation(
             phase="re_review",
             round_index=4,
-            initial_model="gpt-5.6-luna",
-            initial_effort="max",
+            initial_model="gpt-6-sol",
+            initial_effort="medium",
             prior_thread_id="thread-implementer-fix4",
             forbidden_thread_ids=("thread-implementer-fix4",),
         )
@@ -817,7 +854,7 @@ class RuntimeTests(unittest.TestCase):
         metadata = self.valid_metadata(
             payload, escalated_review, thread_id="thread-reviewer-001"
         )
-        metadata["model"] = "gpt-5.6-luna"
+        metadata["model"] = "gpt-6-luna"
         audit = runtime.audit_occurrence(payload, metadata, escalated_review)
         self.assertFalse(audit.accepted)
         self.assertIn("model", "\n".join(audit.errors))
@@ -834,8 +871,8 @@ class RuntimeTests(unittest.TestCase):
         sol_review_four = self.sdd_expectation(
             phase="re_review",
             round_index=4,
-            initial_model="gpt-5.6-sol",
-            initial_effort="xhigh",
+            initial_model="gpt-6-sol",
+            initial_effort="high",
             prior_thread_id="thread-implementer-fix4",
         )
         cases = (
@@ -852,7 +889,7 @@ class RuntimeTests(unittest.TestCase):
             (
                 dataclasses.replace(
                     reviewer,
-                    model="gpt-5.6-luna",
+                    model="gpt-6-luna",
                     reasoning_effort="xhigh",
                 ),
                 "sdd_reviewer",
@@ -903,8 +940,8 @@ class RuntimeTests(unittest.TestCase):
         release_worker = self.sdd_expectation(
             phase="worker",
             round_index=1,
-            initial_model="gpt-5.6-luna",
-            initial_effort="xhigh",
+            initial_model="gpt-6-luna",
+            initial_effort="medium",
             scope_kind="release",
             scope_id=initial_scope,
             task_id=None,
@@ -912,7 +949,7 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(
             (release_worker.model, release_worker.reasoning_effort),
-            ("gpt-5.6-sol", "max"),
+            ("gpt-6-astra", "max"),
         )
         self.assertEqual(release_worker.thread_policy, "fresh")
         worker_audit = self.audit(
@@ -927,8 +964,8 @@ class RuntimeTests(unittest.TestCase):
         release_review = self.sdd_expectation(
             phase="re_review",
             round_index=1,
-            initial_model="gpt-5.6-luna",
-            initial_effort="xhigh",
+            initial_model="gpt-6-luna",
+            initial_effort="medium",
             scope_kind="release",
             scope_id=final_scope,
             task_id=None,
@@ -937,7 +974,7 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(
             (release_review.model, release_review.reasoning_effort),
-            ("gpt-5.6-sol", "max"),
+            ("gpt-6-astra", "max"),
         )
         review_audit = self.audit(
             "sdd_reviewer",
@@ -970,7 +1007,7 @@ class RuntimeTests(unittest.TestCase):
                     thread_id=thread_id,
                     release_heads=heads,
                 )
-                non_sol_metadata["model"] = "gpt-5.6-luna"
+                non_sol_metadata["model"] = "gpt-6-luna"
                 rejected_route = runtime.audit_occurrence(
                     release_payload, non_sol_metadata, expected
                 )
@@ -1007,7 +1044,7 @@ class RuntimeTests(unittest.TestCase):
             scope_kind="release",
             scope_id=scope_id,
             task_id=None,
-            initial_model="gpt-5.6-sol",
+            initial_model="gpt-6-astra",
             initial_effort="max",
         )
         release_payload = self.payload("sdd_worker_fresh4")
@@ -1034,7 +1071,7 @@ class RuntimeTests(unittest.TestCase):
                 scope_kind="release",
                 scope_id=release_scope_id(BASE_HEAD, EXPORT_HEAD),
                 task_id=None,
-                initial_model="gpt-5.6-sol",
+                initial_model="gpt-6-astra",
                 initial_effort="max",
             )
 
@@ -1143,6 +1180,25 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(record["errors"], [])
         self.assertEqual(record["usage"], self.fixture["usage"])
 
+    def test_round_four_audit_rejects_non_string_route_without_type_error(self) -> None:
+        expected = self.sdd_expectation(
+            round_index=4, prior_thread_id="thread-implementer-001"
+        )
+        accepted = self.audit(
+            "sdd_worker_fresh4",
+            expected,
+            None,
+            thread_id="thread-implementer-fix4",
+        )
+        self.assertTrue(accepted.accepted, accepted.errors)
+        for field in ("model", "reasoning_effort"):
+            for invalid in ([], {}):
+                with self.subTest(field=field, invalid=invalid):
+                    malformed = accepted.to_record()
+                    malformed[field] = invalid
+                    with self.assertRaisesRegex(ValueError, field):
+                        runtime.OccurrenceAudit.from_record(malformed)
+
     def test_occurrence_from_record_is_strict_and_preserves_rejected_usage(self) -> None:
         self.assertTrue(
             hasattr(runtime.OccurrenceAudit, "from_record"),
@@ -1227,9 +1283,9 @@ class AccountingTests(unittest.TestCase):
         self, phase: str, task_id: str | None = None
     ) -> runtime.OccurrenceExpectation:
         routes = {
-            "planning": ("gpt-5.6-sol", "max"),
-            "controller": ("gpt-5.6-luna", "xhigh"),
-            "preflight": ("gpt-5.6-luna", "max"),
+            "planning": ("gpt-6-astra", "max"),
+            "controller": ("gpt-6-luna", "medium"),
+            "preflight": ("gpt-6-sol", "medium"),
         }
         if phase == "planning":
             scope_kind = "plan"
@@ -1269,9 +1325,9 @@ class AccountingTests(unittest.TestCase):
         prior_thread_id: str | None = None,
     ) -> runtime.OccurrenceExpectation:
         if scope_kind == "release":
-            initial_model, initial_effort = "gpt-5.6-sol", "max"
+            initial_model, initial_effort = "gpt-6-astra", "max"
         else:
-            initial_model, initial_effort = "gpt-5.6-luna", "xhigh"
+            initial_model, initial_effort = "gpt-6-luna", "medium"
         return runtime.OccurrenceExpectation.for_sdd(
             phase=phase,
             scope_kind=scope_kind,

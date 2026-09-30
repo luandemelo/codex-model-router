@@ -2,88 +2,88 @@
   "route_cases": {
     "default": {
       "fact_ids": [],
-      "worker": ["gpt-5.6-luna", "xhigh"],
-      "review": ["gpt-5.6-luna", "max"],
+      "worker": ["gpt-6-luna", "medium"],
+      "review": ["gpt-6-sol", "medium"],
       "role": "implementation",
       "risk_level": "low",
       "decisive_reason_id": "default_clear_isolated_work"
     },
     "qualifier_only": {
       "fact_ids": ["clear_isolated_low_risk"],
-      "worker": ["gpt-5.6-luna", "xhigh"],
-      "review": ["gpt-5.6-luna", "max"],
+      "worker": ["gpt-6-luna", "medium"],
+      "review": ["gpt-6-sol", "medium"],
       "role": "implementation",
       "risk_level": "low",
       "decisive_reason_id": "default_clear_isolated_work"
     },
     "audit": {
       "fact_ids": ["audit", "low_blast_radius"],
-      "worker": ["gpt-5.6-luna", "max"],
-      "review": ["gpt-5.6-luna", "max"],
+      "worker": ["gpt-6-sol", "medium"],
+      "review": ["gpt-6-sol", "medium"],
       "role": "audit",
       "risk_level": "low",
       "decisive_reason_id": "audit"
     },
     "reconciliation": {
       "fact_ids": ["low_blast_radius", "reconciliation"],
-      "worker": ["gpt-5.6-luna", "max"],
-      "review": ["gpt-5.6-luna", "max"],
+      "worker": ["gpt-6-sol", "medium"],
+      "review": ["gpt-6-sol", "medium"],
       "role": "reconciliation",
       "risk_level": "low",
       "decisive_reason_id": "reconciliation"
     },
     "judgment": {
       "fact_ids": ["judgment_required", "low_blast_radius"],
-      "worker": ["gpt-5.6-luna", "max"],
-      "review": ["gpt-5.6-luna", "max"],
+      "worker": ["gpt-6-sol", "medium"],
+      "review": ["gpt-6-sol", "medium"],
       "role": "judgment",
       "risk_level": "low",
       "decisive_reason_id": "judgment_required"
     },
     "approved_complex_local": {
       "fact_ids": ["architecture_approved", "complex_local_execution"],
-      "worker": ["gpt-5.6-luna", "max"],
-      "review": ["gpt-5.6-luna", "max"],
+      "worker": ["gpt-6-sol", "medium"],
+      "review": ["gpt-6-sol", "medium"],
       "role": "implementation",
       "risk_level": "low",
       "decisive_reason_id": "complex_local_execution"
     },
     "integration": {
       "fact_ids": ["cross_module_integration"],
-      "worker": ["gpt-5.6-sol", "xhigh"],
-      "review": ["gpt-5.6-sol", "xhigh"],
+      "worker": ["gpt-6-sol", "high"],
+      "review": ["gpt-6-sol", "high"],
       "role": "implementation",
       "risk_level": "elevated",
       "decisive_reason_id": "cross_module_integration"
     },
     "elevated": {
       "fact_ids": ["untrusted_input"],
-      "worker": ["gpt-5.6-sol", "xhigh"],
-      "review": ["gpt-5.6-sol", "xhigh"],
+      "worker": ["gpt-6-sol", "high"],
+      "review": ["gpt-6-sol", "high"],
       "role": "implementation",
       "risk_level": "elevated",
       "decisive_reason_id": "untrusted_input"
     },
     "hard_gate": {
       "fact_ids": ["schema_migration"],
-      "worker": ["gpt-5.6-sol", "max"],
-      "review": ["gpt-5.6-sol", "max"],
+      "worker": ["gpt-6-astra", "max"],
+      "review": ["gpt-6-astra", "max"],
       "role": "implementation",
       "risk_level": "elevated",
       "decisive_reason_id": "schema_migration"
     },
     "hard_gate_over_integration": {
       "fact_ids": ["cross_module_integration", "schema_migration"],
-      "worker": ["gpt-5.6-sol", "max"],
-      "review": ["gpt-5.6-sol", "max"],
+      "worker": ["gpt-6-astra", "max"],
+      "review": ["gpt-6-astra", "max"],
       "role": "implementation",
       "risk_level": "elevated",
       "decisive_reason_id": "schema_migration"
     },
     "integration_over_audit": {
       "fact_ids": ["audit", "cross_module_integration", "low_blast_radius"],
-      "worker": ["gpt-5.6-sol", "xhigh"],
-      "review": ["gpt-5.6-sol", "xhigh"],
+      "worker": ["gpt-6-sol", "high"],
+      "review": ["gpt-6-sol", "high"],
       "role": "audit",
       "risk_level": "elevated",
       "decisive_reason_id": "cross_module_integration"

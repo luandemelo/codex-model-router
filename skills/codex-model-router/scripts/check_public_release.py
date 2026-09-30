@@ -253,8 +253,8 @@ def _check_cross_file_contracts(root: Path, errors: list[str]) -> None:
     if isinstance(plugin, dict):
         if plugin.get("name") != "codex-model-router":
             _error("plugin manifest name must be codex-model-router", errors)
-        if plugin.get("version") != "0.4.0":
-            _error("plugin manifest version must be 0.4.0", errors)
+        if plugin.get("version") != "0.5.0":
+            _error("plugin manifest version must be 0.5.0", errors)
         if plugin.get("license") != "Apache-2.0":
             _error("plugin manifest license must be Apache-2.0", errors)
         interface = plugin.get("interface")
@@ -274,7 +274,7 @@ def _check_cross_file_contracts(root: Path, errors: list[str]) -> None:
     except (OSError, UnicodeDecodeError) as exc:
         _error(f"dependency documentation is missing: {exc}", errors)
     else:
-        required = ("gpt-5.6-luna", "gpt-5.6-sol", "xhigh", "max", "Superpowers 6.3.0", "Python 3.10", "standard library", "Git", "GitHub CLI")
+        required = ("gpt-6-luna", "gpt-6-sol", "gpt-6-astra", "medium", "high", "max", "Superpowers 6.3.0", "Python 3.10", "standard library", "Git", "GitHub CLI")
         for phrase in required:
             if phrase.casefold() not in dependency_text.casefold():
                 _error(f"dependency documentation omits {phrase}", errors)

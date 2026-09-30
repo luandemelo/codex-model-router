@@ -1,16 +1,16 @@
 # Migrating from Quality-First Routing to Codex Model Router
 
-`codex-model-router` is the published v0.4.0 skill and the only dispatch
+`codex-model-router` is the published v0.5.0 skill and the only dispatch
 surface for new work. It preserves the useful routing invariants while moving
 the wire contract to closed CMR schemas and deterministic compiler/runtime
 code.
 
 ## What changes
 
-- Emit only `cmr-controller-result-v1` from a fresh Luna/xhigh controller.
+- Emit only `cmr-controller-result-v1` from a fresh Luna/medium controller.
 - Bind the audited occurrence and compile `cmr-route-decision-v1` with the
   CMR compiler; do not author worker/reviewer/lifecycle fields in model prose.
-- Use the CMR selector, Luna/max preflight for `run`, and
+- Use the CMR selector, Sol/medium preflight for `run`, and
   `cmr-dispatch-bundle-v1` validation before SDD handoff.
 - Keep each external action independently authorized, previewed, and read
   back. Cost, urgency, recurrence pressure, and social permission do not

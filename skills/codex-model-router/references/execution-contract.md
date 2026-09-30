@@ -4,16 +4,26 @@ This reference governs the handoff after a route is compiled. The executable
 contracts in `scripts/cmr_contracts.py`, `scripts/cmr_compiler.py`,
 `scripts/cmr_dispatch.py`, and `scripts/cmr_runtime.py` are authoritative.
 
+## Host gate
+
+Before any controller invocation, run the host dependency preflight described in
+[`dependency-preflight.md`](dependency-preflight.md). It is outside the CMR
+schemas: the host must confirm the CMR skill, model/effort access, Python/Git,
+and a readable `superpowers:subagent-driven-development`. If any capability is
+missing, stop before controller, compiler, preflight, or spawn and report the
+appropriate remedy. Installation requires scoped authorization; installing a
+skill does not grant access to an unavailable model.
+
 ## Control plane
 
-Use a fresh Luna/xhigh controller with `fork_turns: "none"`, an ephemeral
+Use a fresh Luna/medium controller with `fork_turns: "none"`, an ephemeral
 destroyed read-only CWD, and `control_plane_no_write`. Bind its occurrence,
 brief, and raw artifact before compiling. The compiler emits
 `cmr-route-decision-v1`; deterministic code owns worker, review, risk,
 recurrence, execution, status, blockers, and external-action lifecycle.
 
 The selector may skip only a current exact safe lane. A `run` records a fresh
-Luna/max preflight invocation and closed result (`accept`, `replace`, or
+Sol/medium preflight invocation and closed result (`accept`, `replace`, or
 `block`). Preflight is control-plane evidence: its thread cannot be reused as
 worker or review evidence, and it never satisfies task review.
 
@@ -38,7 +48,7 @@ exact scope, base/head binding, `fork_turns: "none"`, and no authority to
 create subagents or external writes. A fresh phase-correct task reviewer reads
 the same brief, report, and diff in a read-only worktree. Fix rounds follow the
 CMR escalation matrix. The final whole-branch reviewer is always fresh
-gpt-5.6-sol/max.
+gpt-6-astra/max.
 
 ## External effects
 

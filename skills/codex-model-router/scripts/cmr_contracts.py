@@ -850,8 +850,8 @@ def _occurrence_schema() -> dict[str, Any]:
                 "type": "string",
                 "enum": ["closed_json", "sdd_report"],
             },
-            "model": {"type": "string", "enum": ["gpt-5.6-luna", "gpt-5.6-sol"]},
-            "reasoning_effort": {"type": "string", "enum": ["xhigh", "max"]},
+            "model": {"type": "string", "enum": ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"]},
+            "reasoning_effort": {"type": "string", "enum": ["medium", "high", "max"]},
             "fork_turns": {"const": "none"},
             "prompt_sha256": hash_value,
             "thread_policy": {"type": "string", "enum": ["fresh", "resume"]},
@@ -891,6 +891,24 @@ def _occurrence_schema() -> dict[str, Any]:
                 "uniqueItems": True,
             },
         },
+        "allOf": [
+            {
+                "oneOf": [
+                    {
+                        "properties": {
+                            "model": {"const": model},
+                            "reasoning_effort": {"const": effort},
+                        }
+                    }
+                    for model, effort in (
+                        ("gpt-6-luna", "medium"),
+                        ("gpt-6-sol", "medium"),
+                        ("gpt-6-sol", "high"),
+                        ("gpt-6-astra", "max"),
+                    )
+                ]
+            }
+        ],
         "$defs": {
             "UsageEvidence": {
                 "type": "object",

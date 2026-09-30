@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](docs/dependencies.md)
 
 Codex Model Router (CMR) is a quality-first Codex plugin that routes
-development work between `gpt-5.6-luna` and `gpt-5.6-sol`. A small model
+development work between `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`. A small model
 response identifies facts and uncertainties; deterministic Python code owns
 the model, reasoning effort, review level, recurrence, lifecycle, and external
 authorization decisions.
@@ -15,7 +15,7 @@ allowing cost, urgency, or social pressure to weaken the quality gates for
 high-risk work.
 
 > **Distribution status:** the skills-only plugin package is available from
-> this repository at version `0.4.0`. It is not yet listed in the universal
+> this repository at version `0.5.0`. It is not yet listed in the universal
 > Plugins Directory. The supported path today is direct skill installation
 > from GitHub or local plugin testing.
 
@@ -63,13 +63,13 @@ the following matters:
 - repeated failures must escalate instead of consuming more cheap attempts;
 - architecture, security, concurrency, migrations, or release review is in
   scope;
-- Luna should handle eligible bounded work without using low or medium effort;
+- Luna should handle isolated work at medium effort, with stronger models for review and risk;
 - external actions such as issues, pushes, pull requests, merges, deployments,
   tags, releases, or plugin installation require separate authorization;
 - you need a machine-checkable record of why a route was selected.
 
 CMR is intentionally unnecessary for conversations that do not dispatch
-development work or do not need a controlled Luna/Sol routing decision.
+development work or do not need a controlled Luna/Sol/Astra routing decision.
 
 ## Quick start
 
@@ -78,9 +78,9 @@ development work or do not need a controlled Luna/Sol routing decision.
 You need:
 
 - a Codex app, CLI, or IDE surface with skills and subagents;
-- account access to `gpt-5.6-luna` and `gpt-5.6-sol`;
+- account access to `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`;
 - Superpowers with `superpowers:subagent-driven-development` (tested with
-  Superpowers 6.3.0);
+  Superpowers 6.3.0; required skill checked with 6.4.2);
 - Python 3.10 or newer and Git for local validation and contribution.
 
 See [Dependencies](#dependencies) for the complete boundary.
@@ -110,9 +110,9 @@ backward compatibility during rollout and include rollback verification.
 ```
 
 This example contains a schema migration, so the deterministic hard-gate policy
-selects Sol/max for planning, execution, and the required review phases. A
-bounded isolated task can route to Luna/xhigh or Luna/max when its validated
-facts satisfy the published policy.
+selects Astra/max for planning, execution, and the required review phases.
+Isolated work routes to Luna/medium; eligible substantive local work routes
+to Sol/medium when its validated facts satisfy the published policy.
 
 CMR prepares and validates the route. It does not silently push code, create a
 GitHub issue, merge a pull request, deploy, or publish a release.
@@ -131,34 +131,34 @@ requests. See the
 
 ```mermaid
 flowchart TD
-    A[Development task and fresh brief] --> B[Fresh Luna/xhigh controller]
+    A[Development task and fresh brief] --> B[Fresh Luna/medium controller]
     B --> C[Closed facts, uncertainties, and action intents]
     C --> D[Python binding and deterministic compiler]
     D --> E[Worker route and independent review route]
     E --> F{Safe-lane selector}
     F -->|Exact current safe lane| G[Skip semantic preflight]
-    F -->|Run required| H[Fresh Luna/max semantic preflight]
+    F -->|Run required| H[Fresh Sol/medium semantic preflight]
     G --> I[Validated CMR dispatch bundle]
     H --> I
     I --> J[Fresh Superpowers SDD worker]
     J --> K[Task review]
-    K --> L[Sol/max whole-branch final review]
+    K --> L[Astra/max whole-branch final review]
 ```
 
 The control flow has six stages:
 
-1. **Controller:** a fresh Luna/xhigh occurrence emits only a closed
+1. **Controller:** a fresh Luna/medium occurrence emits only a closed
    `cmr-controller-result-v1` envelope.
 2. **Binding:** runtime code binds the response to the fresh task brief,
    occurrence identity, hashes, usage, and repository context.
 3. **Compilation:** code derives risk, recurrence, worker route, review route,
    lifecycle, and external-action state.
 4. **Preflight selection:** only an exact current safe-lane entry can skip a
-   fresh Luna/max semantic preflight.
+   fresh Sol/medium semantic preflight.
 5. **Dispatch:** a complete `cmr-dispatch-bundle-v1` must validate before a
    worker is started.
 6. **Execution and review:** Superpowers SDD receives a fresh scoped brief;
-   task review and Sol/max final review remain separate occurrences.
+   task review and Astra/max final review remain separate occurrences.
 
 For the detailed invariants, read
 [`docs/architecture.md`](docs/architecture.md),
@@ -170,18 +170,20 @@ and
 
 | Validated situation | Worker | Task review |
 | --- | --- | --- |
-| Hard gate, recurrence, canonical planning, or final review | Sol/max | Sol/max |
-| Integration or elevated risk | Sol/xhigh | Sol/xhigh |
-| Eligible low-blast-radius audit, reconciliation, judgment, or approved local work | Luna/max | Luna/max |
-| Default isolated work | Luna/xhigh | Luna/max |
+| Hard gate, recurrence, canonical planning, or final review | Astra/max | Astra/max |
+| Integration or elevated risk | Sol/high | Sol/high |
+| Eligible low-blast-radius audit, reconciliation, judgment, or approved local work | Sol/medium | Sol/medium |
+| Default isolated work | Luna/medium | Sol/medium |
 
 Important invariants:
 
-- Luna/xhigh is the minimum controller route; CMR does not use low, medium, or
-  high reasoning effort.
-- Canonical planning and whole-branch final review are always Sol/max.
+- Luna/medium handles the controller and isolated work; Sol/medium reviews
+  those tasks. Integration uses Sol/high and critical work uses Astra/max.
+- This release uses an explicit GPT-6 profile. It never substitutes another
+  model when a required model is unavailable.
+- Canonical planning and whole-branch final review are always Astra/max.
 - Two complete failures of the same defect, or a defect that reappears after a
-  declared resolution, stays Sol/max.
+  declared resolution, stays Astra/max.
 - Cost, quota, urgency, deadlines, authority, sunk cost, diff size, and social
   pressure never reduce a route.
 - A semantic preflight adjudicates the control plane. It is not worker
@@ -189,18 +191,22 @@ Important invariants:
 - Historical Quality-First Routing (QFR) records are documentary only and
   cannot authorize CMR dispatch.
 
+For benchmark evidence, current host requirements, and migration from 0.4.0,
+see [GPT-6 routing update](docs/gpt6-routing.md). GPT-6.1 Sol is a candidate
+for a future validated profile; this release selects `gpt-6-sol` explicitly.
+
 ## Core concepts
 
 | Term | Meaning |
 | --- | --- |
-| **Controller** | Fresh Luna/xhigh call that reports only ontology-backed facts, uncertainties, and action intents. |
+| **Controller** | Fresh Luna/medium call that reports only ontology-backed facts, uncertainties, and action intents. |
 | **Occurrence** | Audited record of one model call, including phase, scope, hashes, usage, thread policy, and acceptance state. |
 | **Compiler** | Standard-library Python code that owns route precedence and derives the complete decision. |
 | **Safe lane** | Frozen, plan-bound evidence for a narrowly eligible task that may skip semantic preflight. |
-| **Semantic preflight** | Fresh Luna/max control-plane adjudication that can accept, replace with a stronger route, or block. |
+| **Semantic preflight** | Fresh Sol/medium control-plane adjudication that can accept, replace with a stronger route, or block. |
 | **Dispatch bundle** | Complete validated handoff containing route evidence, preflight state, and the materialized worker brief. |
-| **Recurrence** | A repeated failure of the same bound defect; recurrence escalates fail-closed to Sol/max. |
-| **Hard gate** | A fact such as security-sensitive work, schema migration, concurrency, architecture, or final review that requires Sol/max. |
+| **Recurrence** | A repeated failure of the same bound defect; recurrence escalates fail-closed to Astra/max. |
+| **Hard gate** | A fact such as security-sensitive work, schema migration, concurrency, architecture, or final review that requires Astra/max. |
 | **External action** | A separately authorized mutation such as issue creation, push, PR, merge, deployment, tag, release, installation, or publication. |
 
 ## CLI and contracts
@@ -245,7 +251,7 @@ Required host capabilities:
 
 - Codex with skills, subagents, and access to the exact model slugs used by the
   routing policy;
-- Superpowers 6.3.0 with
+- Superpowers with
   `superpowers:subagent-driven-development` (host dependency, not bundled);
 - Python 3.10+ using the standard library only;
 - Git for local history and review workflows.
@@ -343,7 +349,7 @@ suspected vulnerability.
 
 ## Project status and license
 
-The current public contract version is `0.4.0` and is actively evolving.
+The current public contract version is `0.5.0` and is actively evolving.
 Breaking contract changes, migrations, and compatibility notes are documented
 in [`CHANGELOG.md`](CHANGELOG.md). Existing QFR users should follow the
 [`migration guide`](docs/migration-from-quality-first-routing.md) instead of

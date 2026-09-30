@@ -65,6 +65,34 @@ class ContractTests(unittest.TestCase):
                     {"type": "integer", "minimum": 0},
                 )
 
+    def test_gpt6_route_schemas_allow_exactly_four_host_supported_pairs(self) -> None:
+        routes = {
+            ("gpt-6-luna", "medium"),
+            ("gpt-6-sol", "medium"),
+            ("gpt-6-sol", "high"),
+            ("gpt-6-astra", "max"),
+        }
+        schemas = contracts.expected_published_schemas(self.ontologies)
+        route = schemas["cmr-route-decision-v1.schema.json"]["$defs"]["Route"]
+        occurrence = schemas["cmr-occurrence-audit-v1.schema.json"]
+        for label, choices in (
+            ("decision", route.get("oneOf", [])),
+            (
+                "occurrence",
+                occurrence.get("allOf", [{}])[0].get("oneOf", []),
+            ),
+        ):
+            with self.subTest(label=label):
+                pairs = {
+                    (
+                        choice["properties"]["model"]["const"],
+                        choice["properties"]["reasoning_effort"]["const"],
+                    )
+                    for choice in choices
+                }
+                self.assertEqual(pairs, routes)
+                self.assertEqual(len(choices), len(routes))
+
     def test_strict_json_object_rejects_non_object_trailing_and_duplicate_keys(self) -> None:
         self.assertEqual(
             contracts.strict_json_object(b'{"answer":1}', "answer"),

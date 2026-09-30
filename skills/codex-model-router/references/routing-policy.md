@@ -10,12 +10,12 @@ The compiler applies the first matching rule:
 
 | Condition | Worker | Fresh review |
 | --- | --- | --- |
-| branch final review | gpt-5.6-sol/max | gpt-5.6-sol/max |
-| hard gate | gpt-5.6-sol/max | gpt-5.6-sol/max |
-| recurring failure or reappeared defect | gpt-5.6-sol/max | gpt-5.6-sol/max |
-| integration or elevated risk | gpt-5.6-sol/xhigh | gpt-5.6-sol/xhigh |
-| explicit low-risk Luna/max eligibility | gpt-5.6-luna/max | gpt-5.6-luna/max |
-| otherwise | gpt-5.6-luna/xhigh | gpt-5.6-luna/max |
+| branch final review | gpt-6-astra/max | gpt-6-astra/max |
+| hard gate | gpt-6-astra/max | gpt-6-astra/max |
+| recurring failure or reappeared defect | gpt-6-astra/max | gpt-6-astra/max |
+| integration or elevated risk | gpt-6-sol/high | gpt-6-sol/high |
+| explicit low-risk substantive-work eligibility | gpt-6-sol/medium | gpt-6-sol/medium |
+| otherwise | gpt-6-luna/medium | gpt-6-sol/medium |
 
 Hard gates include architecture, authentication/authorization, schema
 migration, rollback, concurrency, locks, idempotency, cryptography, secrets,
@@ -30,7 +30,7 @@ integration, contract coordination, integration tests, untrusted input,
 security or incident risk, availability/integrity impact, critical risk, and
 data integrity. A single-module change can still be elevated.
 
-Luna/max is closed eligibility, not a cheaper default: it requires low risk,
+Sol/medium is closed eligibility, not a cheaper default: it requires low risk,
 `low_blast_radius`, and either substantive `audit`, `judgment_required`, or
 `reconciliation`, or `complex_local_execution` together with
 `architecture_approved`. A controller role such as `implementation`, generic
@@ -55,7 +55,7 @@ or a declaration unsupported by the event history.
 ```
 
 The CMR selector is closed: `skip` has no triggers and one exact safe-lane
-manifest reference; `run` has canonical trigger IDs and receives Luna/max
+manifest reference; `run` has canonical trigger IDs and receives Sol/medium
 preflight; `block` is reserved for invalid artifact binding. Safe-lane
 membership is exact to the frozen plan, brief, and task. Missing or stale
 global evidence means `safe_lane_unavailable`, not a down-route or a task
