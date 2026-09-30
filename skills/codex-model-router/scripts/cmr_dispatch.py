@@ -640,7 +640,7 @@ def _planning_invocation_schema() -> dict[str, Any]:
             "phase": {"const": "planning"},
             "purpose": {"const": "canonical_planning"},
             **refs,
-            "model": {"const": "gpt-5.6-sol"},
+            "model": {"const": "gpt-6-astra"},
             "reasoning_effort": {"const": "max"},
             "fork_turns": {"const": "none"},
             "thread_id": {"type": "string", "minLength": 1},
@@ -736,8 +736,8 @@ def _preflight_invocation_schema() -> dict[str, Any]:
             "task_id": {"type": "string", "minLength": 1},
             **refs,
             "selector": {"$ref": "#/$defs/RunSelector"},
-            "model": {"const": "gpt-5.6-luna"},
-            "reasoning_effort": {"const": "max"},
+            "model": {"const": "gpt-6-sol"},
+            "reasoning_effort": {"const": "medium"},
             "fork_turns": {"const": "none"},
             "thread_id": {"type": "string", "minLength": 1},
             "cwd": {"$ref": "#/$defs/CwdEvidence"},
@@ -1054,7 +1054,7 @@ def _planning_invocation_errors(value: Any) -> list[str]:
         "schema_version": "cmr-planning-invocation-v1",
         "phase": "planning",
         "purpose": "canonical_planning",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6-astra",
         "reasoning_effort": "max",
         "fork_turns": "none",
         "exit_code": 0,
@@ -1167,10 +1167,10 @@ def _decision_errors(value: Any) -> list[str]:
     elif type(recurrence.get("active")) is not bool:
         errors.append("route decision.recurrence.active must be boolean")
     allowed_routes = {
-        ("gpt-5.6-luna", "xhigh"),
-        ("gpt-5.6-luna", "max"),
-        ("gpt-5.6-sol", "xhigh"),
-        ("gpt-5.6-sol", "max"),
+        ("gpt-6-luna", "medium"),
+        ("gpt-6-sol", "medium"),
+        ("gpt-6-sol", "high"),
+        ("gpt-6-astra", "max"),
     }
     for field in ("worker", "review"):
         route = value.get(field)
@@ -1182,10 +1182,10 @@ def _decision_errors(value: Any) -> list[str]:
         elif (route.get("model"), route.get("reasoning_effort")) not in allowed_routes:
             errors.append(f"route decision.{field} route is invalid")
     expected_reviews = {
-        ("gpt-5.6-luna", "xhigh"): ("gpt-5.6-luna", "max"),
-        ("gpt-5.6-luna", "max"): ("gpt-5.6-luna", "max"),
-        ("gpt-5.6-sol", "xhigh"): ("gpt-5.6-sol", "xhigh"),
-        ("gpt-5.6-sol", "max"): ("gpt-5.6-sol", "max"),
+        ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
+        ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
+        ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
+        ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
     }
     worker = value.get("worker")
     review = value.get("review")
@@ -1247,13 +1247,13 @@ def _decision_errors(value: Any) -> list[str]:
         )
         final_review = value.get("role") == "final_review"
         if final_review or recurrence_active or hard:
-            expected_worker = ("gpt-5.6-sol", "max")
+            expected_worker = ("gpt-6-astra", "max")
         elif elevated:
-            expected_worker = ("gpt-5.6-sol", "xhigh")
+            expected_worker = ("gpt-6-sol", "high")
         elif eligible:
-            expected_worker = ("gpt-5.6-luna", "max")
+            expected_worker = ("gpt-6-sol", "medium")
         else:
-            expected_worker = ("gpt-5.6-luna", "xhigh")
+            expected_worker = ("gpt-6-luna", "medium")
         if isinstance(worker, Mapping) and (
             worker.get("model"), worker.get("reasoning_effort")
         ) != expected_worker:
@@ -1431,8 +1431,8 @@ def _preflight_invocation_errors(value: Any) -> list[str]:
     constants = {
         "schema_version": "cmr-preflight-invocation-v1",
         "phase": "preflight",
-        "model": "gpt-5.6-luna",
-        "reasoning_effort": "max",
+        "model": "gpt-6-sol",
+        "reasoning_effort": "medium",
         "fork_turns": "none",
         "exit_code": 0,
         "external_writes": False,
@@ -1594,7 +1594,7 @@ def _control_occurrence_errors(
             "scope_kind": "plan",
             "scope_id": plan_sha256,
             "task_id": None,
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-astra",
             "reasoning_effort": "max",
         }
     else:
@@ -1603,8 +1603,8 @@ def _control_occurrence_errors(
             "scope_kind": "task",
             "scope_id": task_id,
             "task_id": task_id,
-            "model": "gpt-5.6-luna",
-            "reasoning_effort": "max",
+            "model": "gpt-6-sol",
+            "reasoning_effort": "medium",
         }
     expected.update(
         {
@@ -1795,7 +1795,7 @@ def materialize_safe_lane(
             "transcript": evidence.transcript.to_dict(),
             "occurrence": evidence.occurrence_ref.to_dict(),
             "certificate": certificate.to_dict(),
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-astra",
             "reasoning_effort": "max",
             "fork_turns": "none",
             "thread_id": occurrence.thread_id,
@@ -1848,11 +1848,11 @@ def _parsed_control_raw(
     if phase == "planning":
         scope_kind = "plan"
         scope_id = plan_sha256 or ""
-        model, effort = "gpt-5.6-sol", "max"
+        model, effort = "gpt-6-astra", "max"
     else:
         scope_kind = "task"
         scope_id = task_id or ""
-        model, effort = "gpt-5.6-luna", "max"
+        model, effort = "gpt-6-sol", "medium"
     expected = cmr_runtime.OccurrenceExpectation(
         phase=phase,
         scope_kind=scope_kind,
@@ -2135,7 +2135,7 @@ def _selector_triggers(decision: Mapping[str, Any]) -> set[str]:
         worker.get("model"),
         worker.get("reasoning_effort"),
     ) if isinstance(worker, Mapping) else (None, None)
-    if route != ("gpt-5.6-luna", "xhigh"):
+    if route != ("gpt-6-luna", "medium"):
         triggers.add("nondefault_worker_route")
     hard_gates = decision.get("hard_gates")
     recurrence = decision.get("recurrence")
@@ -2151,8 +2151,8 @@ def _selector_triggers(decision: Mapping[str, Any]) -> set[str]:
         for fact in facts
     ):
         triggers.add("integration_or_elevated_risk")
-    if route == ("gpt-5.6-luna", "max"):
-        triggers.add("luna_max_eligibility")
+    if route == ("gpt-6-sol", "medium"):
+        triggers.add("scoped_substantive_eligibility")
     if decision.get("role") == "final_review" or decision.get(
         "decisive_reason_id"
     ) == "branch_final_review":
@@ -2598,8 +2598,8 @@ def materialize_preflight(
                 "raw": bound_preflight.raw.to_dict(),
                 "transcript": bound_preflight.transcript.to_dict(),
                 "occurrence": bound_preflight.occurrence_ref.to_dict(),
-                "model": "gpt-5.6-luna",
-                "reasoning_effort": "max",
+                "model": "gpt-6-sol",
+                "reasoning_effort": "medium",
                 "fork_turns": "none",
                 "thread_id": occurrence.thread_id,
                 "cwd": copy.deepcopy(occurrence.cwd),
@@ -2717,8 +2717,8 @@ def _controller_evidence_details(
             scope_id=evidence["task_id"],
             round_index=None,
             task_id=evidence["task_id"],
-            model="gpt-5.6-luna",
-            reasoning_effort="xhigh",
+            model="gpt-6-luna",
+            reasoning_effort="medium",
             prompt_sha256=brief_ref.sha256,
             forbidden_thread_ids=(),
             prior_thread_id=None,

@@ -45,16 +45,16 @@ SELECTOR_TRIGGER_IDS = (
     "nondefault_worker_route",
     "hard_gate_or_recurrence",
     "integration_or_elevated_risk",
-    "luna_max_eligibility",
+    "scoped_substantive_eligibility",
     "branch_final_review",
     "external_action_present",
     *cmr_contracts.UNCERTAINTY_IDS,
 )
 _REVIEW_ROUTES = {
-    ("gpt-5.6-luna", "xhigh"): ("gpt-5.6-luna", "max"),
-    ("gpt-5.6-luna", "max"): ("gpt-5.6-luna", "max"),
-    ("gpt-5.6-sol", "xhigh"): ("gpt-5.6-sol", "xhigh"),
-    ("gpt-5.6-sol", "max"): ("gpt-5.6-sol", "max"),
+    ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
+    ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
+    ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
+    ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
 }
 _USAGE_FIELDS = (
     "input_tokens",
@@ -359,8 +359,8 @@ def _validate_occurrence_record(
     if value.get("response_policy") != "closed_json":
         errors.append(f"{label}.response_policy must equal closed_json")
     if (value.get("model"), value.get("reasoning_effort")) != (
-        "gpt-5.6-luna",
-        "xhigh",
+        "gpt-6-luna",
+        "medium",
     ):
         errors.append(f"{label} route does not match its phase")
     if value.get("fork_turns") != "none":
@@ -587,8 +587,8 @@ def _preflight_occurrence_errors(
         "round_index": None,
         "task_id": task_id,
         "response_policy": "closed_json",
-        "model": "gpt-5.6-luna",
-        "reasoning_effort": "max",
+        "model": "gpt-6-sol",
+        "reasoning_effort": "medium",
         "fork_turns": "none",
         "thread_policy": "fresh",
         "write_policy": "control_plane_no_write",
@@ -712,17 +712,17 @@ def _route_rank(route: Any) -> int | None:
         return None
     pair = (route.get("model"), route.get("reasoning_effort"))
     ranks = {
-        ("gpt-5.6-luna", "xhigh"): 0,
-        ("gpt-5.6-luna", "max"): 1,
-        ("gpt-5.6-sol", "xhigh"): 2,
-        ("gpt-5.6-sol", "max"): 3,
+        ("gpt-6-luna", "medium"): 0,
+        ("gpt-6-sol", "medium"): 1,
+        ("gpt-6-sol", "high"): 2,
+        ("gpt-6-astra", "max"): 3,
     }
     return ranks.get(pair)
 
 
-def _sol_max_adjudication() -> dict[str, str]:
+def _astra_max_adjudication() -> dict[str, str]:
     return {
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6-astra",
         "reasoning_effort": "max",
         "fork_turns": "none",
         "thread_policy": "fresh",
@@ -930,7 +930,7 @@ def apply_preflight(
             replacement_evidence=None,
             final_decision=None,
             blocker_ids=tuple(bound_preflight.result["blocker_ids"]),
-            adjudication=_sol_max_adjudication(),
+            adjudication=_astra_max_adjudication(),
         )
 
     replacement_evidence = copy.deepcopy(dict(candidate_evidence))
@@ -952,7 +952,7 @@ def apply_preflight(
             replacement_evidence=None,
             final_decision=None,
             blocker_ids=("preflight_non_monotonic",),
-            adjudication=_sol_max_adjudication(),
+            adjudication=_astra_max_adjudication(),
         )
     return PreflightTransition(
         outcome="replaced",
@@ -1164,7 +1164,7 @@ def validate_runtime_input(
     return errors
 
 
-def _eligible_luna_max_facts(fact_ids: Sequence[str]) -> list[str]:
+def _eligible_scoped_substantive_facts(fact_ids: Sequence[str]) -> list[str]:
     facts = set(fact_ids)
     eligible: set[str] = set()
     if "low_blast_radius" in facts:
@@ -1257,7 +1257,7 @@ def compile_route(
         if fact_entries[fact_id]["routing_class"]
         in {"integration", "elevated_risk"}
     ]
-    eligible = _eligible_luna_max_facts(facts)
+    eligible = _eligible_scoped_substantive_facts(facts)
     derived_flags: list[str] = []
     for fact_id in facts:
         for flag in fact_entries[fact_id]["derived_flags"]:
@@ -1275,13 +1275,13 @@ def compile_route(
         and runtime["review_scope"] == "branch"
     )
     if final_review or recurrence.active or hard_gates:
-        worker = ("gpt-5.6-sol", "max")
+        worker = ("gpt-6-astra", "max")
     elif elevated:
-        worker = ("gpt-5.6-sol", "xhigh")
+        worker = ("gpt-6-sol", "high")
     elif eligible:
-        worker = ("gpt-5.6-luna", "max")
+        worker = ("gpt-6-sol", "medium")
     else:
-        worker = ("gpt-5.6-luna", "xhigh")
+        worker = ("gpt-6-luna", "medium")
     review = _REVIEW_ROUTES[worker]
 
     if final_review:
@@ -1401,8 +1401,8 @@ def _occurrence_evidence_schema() -> dict[str, Any]:
             "round_index": {"type": "null"},
             "task_id": {"type": "string", "minLength": 1},
             "response_policy": {"const": "closed_json"},
-            "model": {"const": "gpt-5.6-luna"},
-            "reasoning_effort": {"const": "xhigh"},
+            "model": {"const": "gpt-6-luna"},
+            "reasoning_effort": {"const": "medium"},
             "fork_turns": {"const": "none"},
             "prompt_sha256": {
                 "type": "string",
@@ -1629,16 +1629,23 @@ def _runtime_input_schema(
 
 def _route_schema() -> dict[str, Any]:
     return {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["model", "reasoning_effort"],
-        "properties": {
-            "model": {
-                "type": "string",
-                "enum": ["gpt-5.6-luna", "gpt-5.6-sol"],
-            },
-            "reasoning_effort": {"type": "string", "enum": ["xhigh", "max"]},
-        },
+        "oneOf": [
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["model", "reasoning_effort"],
+                "properties": {
+                    "model": {"const": model},
+                    "reasoning_effort": {"const": effort},
+                },
+            }
+            for model, effort in (
+                ("gpt-6-luna", "medium"),
+                ("gpt-6-sol", "medium"),
+                ("gpt-6-sol", "high"),
+                ("gpt-6-astra", "max"),
+            )
+        ]
     }
 
 
@@ -1655,9 +1662,9 @@ def _review_route_schema() -> dict[str, Any]:
                 },
             }
             for model, effort in (
-                ("gpt-5.6-luna", "max"),
-                ("gpt-5.6-sol", "xhigh"),
-                ("gpt-5.6-sol", "max"),
+                ("gpt-6-sol", "medium"),
+                ("gpt-6-sol", "high"),
+                ("gpt-6-astra", "max"),
             )
         ]
     }

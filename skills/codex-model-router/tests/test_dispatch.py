@@ -132,7 +132,7 @@ class DispatchTests(unittest.TestCase):
             scope_kind = "plan"
             scope_id = plan.sha256
             expected_task_id = None
-            model, effort = "gpt-5.6-sol", "max"
+            model, effort = "gpt-6-astra", "max"
             validator: Callable[[Any], list[str]] = lambda value: (
                 contracts.validate_planner_result(
                     value,
@@ -146,12 +146,12 @@ class DispatchTests(unittest.TestCase):
             scope_id = task_id
             expected_task_id = task_id
             if phase == "controller":
-                model, effort = "gpt-5.6-luna", "xhigh"
+                model, effort = "gpt-6-luna", "medium"
                 validator = lambda value: contracts.validate_controller_result(
                     value, self.ontologies
                 )
             else:
-                model, effort = "gpt-5.6-luna", "max"
+                model, effort = "gpt-6-sol", "medium"
                 validator = lambda value: contracts.validate_preflight_result(
                     value, self.ontologies
                 )
@@ -447,7 +447,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(invocation["purpose"], "canonical_planning")
         self.assertEqual(
             (invocation["model"], invocation["reasoning_effort"]),
-            ("gpt-5.6-sol", "max"),
+            ("gpt-6-astra", "max"),
         )
         self.assertEqual(invocation["certificate"], artifacts.certificate.to_dict())
         self.assertEqual(
@@ -458,6 +458,38 @@ class DispatchTests(unittest.TestCase):
         )
         with self.assertRaises(dispatch.DispatchError):
             dispatch.materialize_safe_lane(evidence, ledger_root=self.ledger)
+
+    def test_gpt6_control_invocations_are_bound_to_plan_and_preflight_routes(self) -> None:
+        evidence, briefs, plan, _ = self.planning_inputs()
+        artifacts = dispatch.materialize_safe_lane(evidence, ledger_root=self.ledger)
+        planning = self.read_ref(artifacts.planning_invocation)
+        self.assertEqual(
+            (planning["model"], planning["reasoning_effort"]),
+            ("gpt-6-astra", "max"),
+        )
+        self.assertEqual(planning["plan"]["sha256"], plan.sha256)
+
+        bundle = self.controller_bundle_inputs(
+            brief=briefs["T-001"], prefix="gpt6-preflight"
+        )
+        selector = dispatch.select_preflight(
+            bundle["decision"],
+            manifest_path=self.ledger / "missing.json",
+            ledger_root=self.ledger,
+        )
+        _, _, preflight_artifacts = self.run_preflight(
+            bundle,
+            selector,
+            self.fixture["preflight_results"]["accept"],
+            prefix="gpt6-preflight",
+        )
+        self.assertIsNotNone(preflight_artifacts.invocation)
+        preflight = self.read_ref(preflight_artifacts.invocation)
+        self.assertEqual(
+            (preflight["model"], preflight["reasoning_effort"]),
+            ("gpt-6-sol", "medium"),
+        )
+        self.assertEqual(preflight["candidate_decision"], bundle["decision_ref"].to_dict())
 
     def test_planner_binding_rejects_authored_fields_and_occurrence_or_ref_drift(self) -> None:
         evidence, _, _, _ = self.planning_inputs()
@@ -642,10 +674,10 @@ class DispatchTests(unittest.TestCase):
 
         cases: list[tuple[str, dict[str, Any], dict[str, Any], list[str]]] = [
             (
-                "luna max",
+                "scoped substantive",
                 {**evidence, "fact_ids": ["audit", "low_blast_radius"]},
                 runtime,
-                ["nondefault_worker_route", "luna_max_eligibility"],
+                ["nondefault_worker_route", "scoped_substantive_eligibility"],
             ),
             (
                 "integration",
@@ -820,7 +852,7 @@ class DispatchTests(unittest.TestCase):
         )
         self.assertEqual(
             transition.final_decision["worker"],
-            {"model": "gpt-5.6-luna", "reasoning_effort": "max"},
+            {"model": "gpt-6-sol", "reasoning_effort": "medium"},
         )
         self.assertIsNotNone(artifacts.replacement_evidence)
         self.assertIsNotNone(artifacts.final_decision)
@@ -863,7 +895,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(
             transition.adjudication,
             {
-                "model": "gpt-5.6-sol",
+                "model": "gpt-6-astra",
                 "reasoning_effort": "max",
                 "fork_turns": "none",
                 "thread_policy": "fresh",
@@ -1194,8 +1226,8 @@ class DispatchTests(unittest.TestCase):
             "raw": bound.raw.to_dict(),
             "transcript": bound.transcript.to_dict(),
             "occurrence": bound.occurrence_ref.to_dict(),
-            "model": "gpt-5.6-luna",
-            "reasoning_effort": "max",
+            "model": "gpt-6-sol",
+            "reasoning_effort": "medium",
             "fork_turns": "none",
             "thread_id": occurrence.thread_id,
             "cwd": copy.deepcopy(occurrence.cwd),

@@ -22,15 +22,15 @@
         }
       },
       "expected": {
-        "worker": ["gpt-5.6-luna", "max"],
-        "review": ["gpt-5.6-luna", "max"],
+        "worker": ["gpt-6-sol", "medium"],
+        "review": ["gpt-6-sol", "medium"],
         "decisive_reason_id": "audit",
         "selector": {
           "decision": "run",
           "trigger_ids": [
             "safe_lane_unavailable",
             "nondefault_worker_route",
-            "luna_max_eligibility"
+            "scoped_substantive_eligibility"
           ]
         },
         "external_action_states": [],
@@ -62,8 +62,8 @@
         }
       },
       "expected": {
-        "worker": ["gpt-5.6-sol", "max"],
-        "review": ["gpt-5.6-sol", "max"],
+        "worker": ["gpt-6-astra", "max"],
+        "review": ["gpt-6-astra", "max"],
         "decisive_reason_id": "recurring_failure",
         "selector": {
           "decision": "run",
@@ -101,8 +101,8 @@
         }
       },
       "expected": {
-        "worker": ["gpt-5.6-luna", "xhigh"],
-        "review": ["gpt-5.6-luna", "max"],
+        "worker": ["gpt-6-luna", "medium"],
+        "review": ["gpt-6-sol", "medium"],
         "decisive_reason_id": "default_clear_isolated_work",
         "selector": {
           "decision": "run",

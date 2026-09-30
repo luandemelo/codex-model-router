@@ -68,7 +68,7 @@ def _planning_occurrence_record() -> dict:
         "round_index": None,
         "task_id": None,
         "response_policy": "closed_json",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6-astra",
         "reasoning_effort": "max",
         "fork_turns": "none",
         "prompt_sha256": "b" * 64,
@@ -163,7 +163,7 @@ class PublicReleaseTests(unittest.TestCase):
             "round_index": None,
             "task_id": None,
             "response_policy": "closed_json",
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-astra",
             "reasoning_effort": "max",
             "fork_turns": "none",
             "prompt_sha256": prompt_sha256,
@@ -186,7 +186,7 @@ class PublicReleaseTests(unittest.TestCase):
             "scope_id": plan_sha256,
             "round_index": None,
             "task_id": None,
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-astra",
             "reasoning_effort": "max",
             "prompt_sha256": prompt_sha256,
             "forbidden_thread_ids": [],
@@ -252,7 +252,7 @@ class PublicReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             request = Path(temporary) / "compile.json"
             evidence = dict(self.controllers["valid_controller"])
-            evidence["worker"] = {"model": "gpt-5.6-sol", "reasoning_effort": "max"}
+            evidence["worker"] = {"model": "gpt-6-astra", "reasoning_effort": "max"}
             _write_json(request, {"evidence": evidence, "runtime": {}})
             completed = _run_cli("compile", str(request))
         self.assertEqual(completed.returncode, 1)
@@ -295,8 +295,8 @@ class PublicReleaseTests(unittest.TestCase):
             "round_index": None,
             "task_id": "TASK-001",
             "response_policy": "closed_json",
-            "model": "gpt-5.6-luna",
-            "reasoning_effort": "xhigh",
+            "model": "gpt-6-luna",
+            "reasoning_effort": "medium",
             "fork_turns": "none",
             "prompt_sha256": hashlib.sha256(prompt).hexdigest(),
             "thread_policy": "fresh",
@@ -322,8 +322,8 @@ class PublicReleaseTests(unittest.TestCase):
             "scope_id": "TASK-001",
             "round_index": None,
             "task_id": "TASK-001",
-            "model": "gpt-5.6-luna",
-            "reasoning_effort": "xhigh",
+            "model": "gpt-6-luna",
+            "reasoning_effort": "medium",
             "prompt_sha256": metadata["prompt_sha256"],
             "forbidden_thread_ids": [],
             "prior_thread_id": None,
@@ -431,7 +431,7 @@ class PublicReleaseTests(unittest.TestCase):
                 {
                     "schema_version": "cmr-planner-result-v1",
                     "safe_lanes": [],
-                    "selected_model": "gpt-5.6-sol",
+                    "selected_model": "gpt-6-astra",
                 },
                 "unknown field",
             ),
@@ -468,8 +468,8 @@ class PublicReleaseTests(unittest.TestCase):
             "round_index": None,
             "task_id": "TASK-001",
             "response_policy": "closed_json",
-            "model": "gpt-5.6-luna",
-            "reasoning_effort": "xhigh",
+            "model": "gpt-6-luna",
+            "reasoning_effort": "medium",
             "fork_turns": "none",
             "prompt_sha256": hashlib.sha256(prompt).hexdigest(),
             "thread_policy": "fresh",
@@ -490,8 +490,8 @@ class PublicReleaseTests(unittest.TestCase):
             "scope_id": "TASK-001",
             "round_index": None,
             "task_id": "TASK-001",
-            "model": "gpt-5.6-luna",
-            "reasoning_effort": "xhigh",
+            "model": "gpt-6-luna",
+            "reasoning_effort": "medium",
             "prompt_sha256": metadata["prompt_sha256"],
             "forbidden_thread_ids": [],
             "prior_thread_id": None,
@@ -573,8 +573,23 @@ class PublicReleaseTests(unittest.TestCase):
             ),
             (
                 "effort",
-                lambda value: value.__setitem__("reasoning_effort", "high"),
+                lambda value: value.__setitem__("reasoning_effort", "xhigh"),
                 "reasoning_effort is outside the public route matrix",
+            ),
+            (
+                "old-model",
+                lambda value: value.__setitem__("model", "gpt-5.6-sol"),
+                "model is outside the public route matrix",
+            ),
+            (
+                "unconfigured-model",
+                lambda value: value.__setitem__("model", "gpt-6.1-sol"),
+                "model is outside the public route matrix",
+            ),
+            (
+                "unsupported-pair",
+                lambda value: value.__setitem__("reasoning_effort", "high"),
+                "model/reasoning_effort is outside the public route matrix",
             ),
             (
                 "response-policy",

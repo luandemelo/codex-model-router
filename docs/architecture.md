@@ -1,7 +1,7 @@
 # Architecture
 
 Codex Model Router (CMR) is a deterministic hybrid control plane for routing
-Codex development work. A fresh Luna/xhigh controller emits only ontology IDs
+Codex development work. A fresh Luna/medium controller emits only ontology IDs
 and action intents. Python code binds that response to the task brief and
 audited occurrence, then derives the worker route, review route, lifecycle,
 and external-action state.
@@ -11,11 +11,11 @@ and external-action state.
 1. Validate the closed `cmr-controller-result-v1` envelope.
 2. Bind the controller occurrence and brief into route evidence.
 3. Compile route precedence in code: hard gates, recurrence, and final review
-   use Sol/max; integration or elevated risk uses Sol/xhigh; eligible
+   use Astra/max; integration or elevated risk uses Sol/high; eligible
    low-blast-radius audit, reconciliation, judgment, or approved local work
-   may use Luna/max; the default is Luna/xhigh.
+   may use Sol/medium; the default is Luna/medium.
 4. Select a preflight from the frozen safe-lane evidence. A `run` uses a fresh
-   Luna/max occurrence; a current exact safe-lane entry may be skipped.
+   Sol/medium occurrence; a current exact safe-lane entry may be skipped.
 5. Validate the complete `cmr-dispatch-bundle-v1` before handing it to
    Superpowers SDD. Historical QFR records are documentary and cannot dispatch.
 
