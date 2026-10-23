@@ -20,11 +20,23 @@ previously tested. Version 6.4.2 was checked for a
 present and readable SDD skill during this update; this is not end-to-end
 certification. For any version, verify the actual required skill and host
 capabilities instead of treating a version string as proof of compatibility.
-Public package 0.9.0 distributes the locally validated 0.8.0 routing matrix:
+Public package 0.10.0 preserves the locally validated 0.8.0 routing matrix
+distributed in 0.9.0:
 GPT-6.1 Sol/medium coordinates, while GPT-6 Luna/xhigh handles clear eligible
 implementation and Luna/max handles dense approved bounded local logic. The
-package retains CMR v4 schemas and route evidence v5. Verify the active host's
+package retains the existing CMR v4 result/decision/runtime contracts and route
+evidence v5, and current dispatch requires bundle-v5 and invocation-v5 with
+gate-evidence-v1. Verify the active host's
 exact model slugs and efforts; do not infer availability from API documentation.
+
+Host capability checks do not establish task risk. Every asserted hard-gate or
+integration/elevated-risk fact needs a source-bound sidecar with a verifiable
+quote from the exact task brief, a positive basis, and an explanation. Missing,
+contradictory, context-only, or invalid evidence blocks without deleting facts
+or silently down-routing. Structural validation proves bindings and coverage,
+not natural-language relevance; fresh Sol/medium preflight assesses claims
+against the full task and phase. A replacement with nonempty final gate claims
+requires one independent Sol/medium accept/block confirmation before dispatch.
 
 ## Native transport capability check
 

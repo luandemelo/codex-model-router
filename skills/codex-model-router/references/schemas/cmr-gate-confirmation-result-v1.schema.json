@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-gate-confirmation-result-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "outcome"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-gate-confirmation-result-v1"
+    },
+    "outcome": {
+      "enum": [
+        "accept",
+        "block"
+      ]
+    }
+  }
+}

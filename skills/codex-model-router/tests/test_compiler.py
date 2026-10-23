@@ -20,6 +20,8 @@ from support import (
     write_json,
 )
 
+from support import compile_fixture_route
+
 compiler = load_module("cmr_compiler")
 contracts = load_module("cmr_contracts")
 runtime_module = load_module("cmr_runtime")
@@ -195,7 +197,7 @@ class CompilerTests(unittest.TestCase):
 
     def compile_case(self, case_id: str) -> dict[str, Any]:
         case = self.fixture["route_cases"][case_id]
-        return compiler.compile_route(
+        return compile_fixture_route(
             self.bound_evidence(case["fact_ids"]),
             self.runtime_input(),
             self.ontologies,
@@ -208,7 +210,7 @@ class CompilerTests(unittest.TestCase):
         runtime: Any,
     ) -> None:
         with self.assertRaises(compiler.CompilationError) as captured:
-            compiler.compile_route(evidence, runtime, self.ontologies)
+            compile_fixture_route(evidence, runtime, self.ontologies)
         self.assertEqual(captured.exception.blocker_id, blocker_id)
         self.assertEqual(captured.exception.blocker_ids, (blocker_id,))
 
@@ -395,7 +397,7 @@ class CompilerTests(unittest.TestCase):
                 self.assertEqual(tuple(decision["worker"].values()), worker)
                 self.assertEqual(tuple(decision["review"].values()), review)
 
-        recurrence = compiler.compile_route(
+        recurrence = compile_fixture_route(
             self.bound_evidence(["cross_module_integration"]),
             self.runtime_input(
                 current_defect_id="same-defect",
@@ -440,7 +442,7 @@ class CompilerTests(unittest.TestCase):
         fact_entries = {entry["id"]: dict(entry) for entry in self.ontologies.fact_entries}
         for fact_id in self.fixture["hard_gate_facts"]:
             with self.subTest(fact_id=fact_id):
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.bound_evidence([fact_id]),
                     self.runtime_input(),
                     self.ontologies,
@@ -460,7 +462,7 @@ class CompilerTests(unittest.TestCase):
             ["architecture", "authentication"],
             uncertainty_ids=["multiple_policy_facts"],
         )
-        decision = compiler.compile_route(evidence, self.runtime_input(), self.ontologies)
+        decision = compile_fixture_route(evidence, self.runtime_input(), self.ontologies)
         self.assertEqual(
             list(decision),
             [
@@ -545,7 +547,7 @@ class CompilerTests(unittest.TestCase):
                 )
 
     def test_runtime_branch_final_review_is_absolute_and_planning_is_invalid(self) -> None:
-        decision = compiler.compile_route(
+        decision = compile_fixture_route(
             self.bound_evidence(["audit", "low_blast_radius"]),
             self.runtime_input(task_phase="final_review", review_scope="branch"),
             self.ontologies,
@@ -566,7 +568,7 @@ class CompilerTests(unittest.TestCase):
 
     def test_one_failure_does_not_escalate_but_second_same_defect_does(self) -> None:
         one = [{"defect_id": " Defect-A ", "event": "attempt_completed_failed"}]
-        one_decision = compiler.compile_route(
+        one_decision = compile_fixture_route(
             self.bound_evidence(),
             self.runtime_input(current_defect_id="defect a", failure_history=one),
             self.ontologies,
@@ -580,7 +582,7 @@ class CompilerTests(unittest.TestCase):
         two = one + [
             {"defect_id": "defect a", "event": "attempt_completed_failed"}
         ]
-        two_decision = compiler.compile_route(
+        two_decision = compile_fixture_route(
             self.bound_evidence(),
             self.runtime_input(current_defect_id="DEFECT--A", failure_history=two),
             self.ontologies,
@@ -616,7 +618,7 @@ class CompilerTests(unittest.TestCase):
             {"defect_id": "defect-a", "event": "declared_resolved"},
             {"defect_id": "DEFECT--A", "event": "reappeared"},
         ]
-        decision = compiler.compile_route(
+        decision = compile_fixture_route(
             self.bound_evidence(["cross_module_integration"]),
             self.runtime_input(current_defect_id=" defect a ", failure_history=history),
             self.ontologies,
@@ -677,7 +679,7 @@ class CompilerTests(unittest.TestCase):
         runtime = self.runtime_input(current_defect_id="d", failure_history=history)
         for facts in ([], ["clear_isolated_low_risk"], ["audit", "low_blast_radius"]):
             with self.subTest(facts=facts):
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.bound_evidence(facts), runtime, self.ontologies
                 )
                 self.assertTrue(decision["recurrence"]["active"])
@@ -697,7 +699,7 @@ class CompilerTests(unittest.TestCase):
                     "authorization_id": f"auth-{index}",
                     "preview_sha256": f"{index:064x}",
                 }
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.bound_evidence(action_intents=[{"action": action, "target": target}]),
                     self.runtime_input(entries=[entry]),
                     self.ontologies,
@@ -747,7 +749,7 @@ class CompilerTests(unittest.TestCase):
                 "preview_sha256": "3" * 64,
             },
         ]
-        decision = compiler.compile_route(
+        decision = compile_fixture_route(
             self.bound_evidence(action_intents=intents),
             self.runtime_input(entries=registry),
             self.ontologies,
@@ -803,7 +805,7 @@ class CompilerTests(unittest.TestCase):
                     "authorization_id": "auth-one-action-only",
                     "preview_sha256": "a" * 64,
                 }]
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.bound_evidence(action_intents=[requested]),
                     self.runtime_input(entries=registry),
                     self.ontologies,
@@ -812,7 +814,7 @@ class CompilerTests(unittest.TestCase):
                 self.assertFalse(decision["external_actions"][0]["authorized"])
 
     def test_missing_action_target_is_local_blocker_without_evidence_identifiers(self) -> None:
-        decision = compiler.compile_route(
+        decision = compile_fixture_route(
             self.bound_evidence(action_intents=[{"action": "push"}]),
             self.runtime_input(),
             self.ontologies,
@@ -1033,7 +1035,7 @@ class CompilerTests(unittest.TestCase):
             {"defect_id": "d", "event": "declared_resolved"},
             {"defect_id": "d", "event": "reappeared"},
         ]
-        decision = compiler.compile_route(
+        decision = compile_fixture_route(
             self.bound_evidence(
                 [
                     "architecture",
@@ -1053,7 +1055,7 @@ class CompilerTests(unittest.TestCase):
         )
         self.assertEqual(decision["decisive_reason_id"], "branch_final_review")
 
-        recurrence = compiler.compile_route(
+        recurrence = compile_fixture_route(
             self.bound_evidence(["architecture"]),
             self.runtime_input(current_defect_id="d", failure_history=history),
             self.ontologies,
@@ -1063,21 +1065,21 @@ class CompilerTests(unittest.TestCase):
             "regression_after_declared_resolved",
         )
 
-        hard_only = compiler.compile_route(
+        hard_only = compile_fixture_route(
             self.bound_evidence(["architecture", "schema_migration"]),
             self.runtime_input(),
             self.ontologies,
         )
         self.assertEqual(hard_only["decisive_reason_id"], "architecture")
 
-        elevated = compiler.compile_route(
+        elevated = compile_fixture_route(
             self.bound_evidence(["critical_risk", "cross_module_integration"]),
             self.runtime_input(),
             self.ontologies,
         )
         self.assertEqual(elevated["decisive_reason_id"], "critical_risk")
 
-        eligible = compiler.compile_route(
+        eligible = compile_fixture_route(
             self.bound_evidence(
                 ["audit", "judgment_required", "low_blast_radius", "reconciliation"]
             ),

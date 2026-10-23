@@ -9,6 +9,8 @@ import unittest
 from support import SKILL_ROOT, load_module
 
 
+from support import compile_fixture_route
+
 compiler = load_module("cmr_compiler")
 contracts = load_module("cmr_contracts")
 dispatch = load_module("cmr_dispatch")
@@ -31,18 +33,18 @@ class ProfileEightTests(unittest.TestCase):
             (evidence["occurrence"]["model"], evidence["occurrence"]["reasoning_effort"]),
             ("gpt-6.1-sol", "medium"),
         )
-        decision = compiler.compile_route(evidence, self.helper.runtime_input(), self.ontologies)
+        decision = compile_fixture_route(evidence, self.helper.runtime_input(), self.ontologies)
         self.assertEqual(decision["schema_version"], "cmr-route-decision-v4")
         self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "xhigh"})
         self.assertEqual(decision["review"], {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
-        risky = compiler.compile_route(
+        risky = compile_fixture_route(
             self.helper.bound_evidence(["cross_module_integration"]),
             self.helper.runtime_input(), self.ontologies,
         )
         self.assertEqual(risky["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": "high"})
         # Compiling another module must not contaminate a bounded unit's route.
         self.assertEqual(
-            compiler.compile_route(evidence, self.helper.runtime_input(), self.ontologies),
+            compile_fixture_route(evidence, self.helper.runtime_input(), self.ontologies),
             decision,
         )
 
@@ -53,7 +55,7 @@ class ProfileEightTests(unittest.TestCase):
         evidence = copy.deepcopy(self.helper.bound_evidence())
         evidence["schema_version"] = "cmr-route-evidence-v4"
         with self.assertRaises(compiler.CompilationError):
-            compiler.compile_route(evidence, self.helper.runtime_input(), self.ontologies)
+            compile_fixture_route(evidence, self.helper.runtime_input(), self.ontologies)
 
 
 class DispatchRequestTests(unittest.TestCase):

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-gate-confirmation-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "packet",
+    "prompt",
+    "raw",
+    "transcript",
+    "occurrence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-gate-confirmation-v1"
+    },
+    "packet": {
+      "$ref": "#/$defs/Packet"
+    },
+    "prompt": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "raw": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "transcript": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "occurrence": {
+      "$ref": "#/$defs/ArtifactRef"
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Packet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "task_phase",
+        "brief",
+        "runtime_input",
+        "candidate_evidence",
+        "candidate_gate_evidence",
+        "replacement_evidence",
+        "replacement_gate_evidence",
+        "final_decision",
+        "proposing_preflight_invocation"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_phase": {
+          "enum": [
+            "implementation",
+            "final_review"
+          ]
+        },
+        "brief": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "runtime_input": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "candidate_evidence": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "candidate_gate_evidence": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "replacement_evidence": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "replacement_gate_evidence": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "final_decision": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "proposing_preflight_invocation": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    }
+  }
+}

@@ -6,6 +6,8 @@ import unittest
 from support import SKILL_ROOT, load_module
 
 
+from support import compile_fixture_route
+
 compiler = load_module("cmr_compiler")
 contracts = load_module("cmr_contracts")
 dispatch = load_module("cmr_dispatch")
@@ -32,7 +34,7 @@ class LocalProfileTests(unittest.TestCase):
             (["architecture"], ("gpt-6.1-sol", "max")),
         ):
             with self.subTest(facts=facts):
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.helper.bound_evidence(facts),
                     self.helper.runtime_input(),
                     self.ontologies,
@@ -43,7 +45,7 @@ class LocalProfileTests(unittest.TestCase):
     def test_substantive_judgment_does_not_require_a_blast_radius_qualifier(self) -> None:
         for fact in ("audit", "judgment_required", "reconciliation", "complex_local_execution"):
             with self.subTest(fact=fact):
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.helper.bound_evidence([fact]), self.helper.runtime_input(), self.ontologies,
                 )
                 self.assertEqual(decision["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
@@ -54,13 +56,13 @@ class LocalProfileTests(unittest.TestCase):
         for removed in ("architecture_approved", "low_blast_radius"):
             with self.subTest(removed=removed):
                 facts = [fact for fact in dense if fact != removed]
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.helper.bound_evidence(facts), self.helper.runtime_input(), self.ontologies,
                 )
                 self.assertEqual(decision["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": "medium"})
         for uncertainty in contracts.UNCERTAINTY_IDS:
             with self.subTest(uncertainty=uncertainty):
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.helper.bound_evidence(dense, uncertainty_ids=[uncertainty]),
                     self.helper.runtime_input(), self.ontologies,
                 )
@@ -74,7 +76,7 @@ class LocalProfileTests(unittest.TestCase):
                               ("elevated_risk", "high"), ("architecture", "max")):
             with self.subTest(extra=extra):
                 facts = sorted(dense + [extra])
-                decision = compiler.compile_route(
+                decision = compile_fixture_route(
                     self.helper.bound_evidence(facts), self.helper.runtime_input(), self.ontologies,
                 )
                 self.assertEqual(decision["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": effort})
@@ -86,7 +88,7 @@ class LocalProfileTests(unittest.TestCase):
                 {"defect_id": "DENSE-DEFECT", "event": "attempt_completed_failed"},
             ]},
         ):
-            decision = compiler.compile_route(
+            decision = compile_fixture_route(
                 self.helper.bound_evidence(dense), self.helper.runtime_input(**changes), self.ontologies,
             )
             self.assertEqual(decision["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": "max"})
@@ -140,7 +142,7 @@ class LocalProfileTests(unittest.TestCase):
             forged["worker"]["reasoning_effort"] = forged_effort
             self.assertIn("route decision worker is not derived from its facts", dispatch._decision_errors(forged))
         _, _, preflight = helper.run_preflight(dense, dense_selector, helper.fixture["preflight_results"]["accept"], prefix="dense-accept")
-        reference = dispatch.materialize_dispatch_bundle(
+        reference = helper.materialize_dispatch_bundle(
             task_id="T-001", brief=dense["brief"], controller_evidence=dense["evidence_ref"],
             runtime_input=dense["runtime_ref"], candidate_decision=dense["decision_ref"],
             preflight_evidence=preflight.evidence, final_decision=preflight.final_decision, ledger_root=helper.ledger,
@@ -158,8 +160,8 @@ class LocalProfileTests(unittest.TestCase):
         old_evidence = copy.deepcopy(evidence)
         old_evidence["schema_version"] = "cmr-route-evidence-v4"
         with self.assertRaises(compiler.CompilationError):
-            compiler.compile_route(old_evidence, self.helper.runtime_input(), self.ontologies)
-        decision = compiler.compile_route(evidence, self.helper.runtime_input(), self.ontologies)
+            compile_fixture_route(old_evidence, self.helper.runtime_input(), self.ontologies)
+        decision = compile_fixture_route(evidence, self.helper.runtime_input(), self.ontologies)
         decision["schema_version"] = "cmr-route-decision-v3"
         self.assertTrue(dispatch._decision_errors(decision))
 
@@ -194,7 +196,7 @@ class LocalProfileTests(unittest.TestCase):
         self.assertIn("dispatch bundle.schema_version is invalid", errors)
 
     def test_recurrence_stays_sol_max_with_independent_fresh_review(self) -> None:
-        decision = compiler.compile_route(
+        decision = compile_fixture_route(
             self.helper.bound_evidence(),
             self.helper.runtime_input(
                 current_defect_id="DEF-1",

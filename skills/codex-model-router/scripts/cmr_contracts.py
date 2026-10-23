@@ -1116,6 +1116,12 @@ def expected_published_schemas(ontologies: Ontologies) -> dict[str, dict[str, An
     from cmr_compiler import expected_compiler_schemas
 
     schemas.update(expected_compiler_schemas(ontologies))
+    from cmr_gate_evidence import expected_gate_evidence_schema
+
+    schemas["cmr-gate-evidence-v1.schema.json"] = expected_gate_evidence_schema(ontologies)
+    from cmr_confirmation_accounting import expected_execution_accounting_schemas
+
+    schemas.update(expected_execution_accounting_schemas())
     return schemas
 
 

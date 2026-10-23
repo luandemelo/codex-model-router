@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 import cmr_contracts
+import cmr_gate_evidence
 from cmr_runtime import OccurrenceAudit
 
 sys.dont_write_bytecode = True
@@ -145,6 +146,7 @@ class BoundPreflightResult:
     task_id: str
     brief: ArtifactRef
     candidate_evidence: ArtifactRef
+    candidate_gate_evidence: ArtifactRef
     candidate_decision: ArtifactRef
     selector: Mapping[str, Any]
     prompt: ArtifactRef
@@ -152,6 +154,8 @@ class BoundPreflightResult:
     transcript: ArtifactRef
     occurrence_ref: ArtifactRef
     occurrence: OccurrenceAudit
+    prompt_bytes: bytes
+    candidate_gate_evidence_bytes: bytes
 
 
 @dataclass(frozen=True)
@@ -629,6 +633,7 @@ def bind_preflight_result(
     task_id: str,
     brief: ArtifactRef,
     candidate_evidence: ArtifactRef,
+    candidate_gate_evidence: ArtifactRef,
     candidate_decision: ArtifactRef,
     selector: Mapping[str, Any],
     prompt: ArtifactRef,
@@ -636,6 +641,8 @@ def bind_preflight_result(
     transcript: ArtifactRef,
     occurrence_ref: ArtifactRef,
     occurrence: OccurrenceAudit,
+    prompt_bytes: bytes,
+    candidate_gate_evidence_bytes: bytes,
 ) -> BoundPreflightResult:
     if not isinstance(result, Mapping):
         raise CompilationError(
@@ -653,6 +660,7 @@ def bind_preflight_result(
     references = {
         "brief": brief,
         "candidate_evidence": candidate_evidence,
+        "candidate_gate_evidence": candidate_gate_evidence,
         "candidate_decision": candidate_decision,
         "prompt": prompt,
         "raw": raw,
@@ -693,11 +701,17 @@ def bind_preflight_result(
         binding_errors.append("occurrence reference size does not bind audit record")
     if binding_errors:
         raise CompilationError("artifact_binding_invalid", binding_errors)
+    attachment_errors = validate_preflight_gate_attachment(
+        prompt_bytes, prompt, candidate_gate_evidence, candidate_gate_evidence_bytes
+    )
+    if attachment_errors:
+        raise CompilationError("artifact_binding_invalid", attachment_errors)
     return BoundPreflightResult(
         result=copy.deepcopy(dict(result)),
         task_id=task_id,
         brief=brief,
         candidate_evidence=candidate_evidence,
+        candidate_gate_evidence=candidate_gate_evidence,
         candidate_decision=candidate_decision,
         selector=copy.deepcopy(dict(selector)),
         prompt=prompt,
@@ -705,7 +719,57 @@ def bind_preflight_result(
         transcript=transcript,
         occurrence_ref=occurrence_ref,
         occurrence=occurrence,
+        prompt_bytes=prompt_bytes,
+        candidate_gate_evidence_bytes=candidate_gate_evidence_bytes,
     )
+
+
+_GATE_ATTACHMENT_MARKER = b"\nCMR_GATE_EVIDENCE_ATTACHMENT_V1\n"
+_GATE_ATTACHMENT_INSTRUCTIONS = (
+    b"Independently adjudicate every candidate gate against the full task and phase. "
+    b"A claim must support a requested change, concrete decision, or critical assurance. "
+    b"Context inventories, ontology boilerplate, preserved or negated work, labels, "
+    b"test presence, and ordinary build choices do not support stronger gates. "
+    b"Do not silently delete unsupported facts or downroute; block or return a "
+    b"monotonic replacement with its own complete source-bound gate evidence.\n"
+)
+
+
+def build_preflight_gate_attachment(
+    candidate_gate_evidence: ArtifactRef, payload: bytes
+) -> bytes:
+    if not isinstance(candidate_gate_evidence, ArtifactRef) or type(payload) is not bytes:
+        raise CompilationError("artifact_binding_invalid", ["gate attachment requires a reference and bytes"])
+    if (hashlib.sha256(payload).hexdigest(), len(payload)) != (
+        candidate_gate_evidence.sha256, candidate_gate_evidence.size_bytes
+    ):
+        raise CompilationError("artifact_binding_invalid", ["gate attachment bytes do not bind reference"])
+    try:
+        cmr_contracts.strict_json_object(payload, "candidate gate evidence")
+        text = payload.decode("utf-8")
+    except (UnicodeError, ValueError) as exc:
+        raise CompilationError("artifact_binding_invalid", [str(exc)]) from exc
+    return _GATE_ATTACHMENT_MARKER + _GATE_ATTACHMENT_INSTRUCTIONS + _canonical_json_bytes({
+        "candidate_gate_evidence": candidate_gate_evidence.to_dict(), "contents": text,
+    })
+
+
+def validate_preflight_gate_attachment(
+    prompt_bytes: bytes, prompt: ArtifactRef,
+    candidate_gate_evidence: ArtifactRef, payload: bytes,
+) -> list[str]:
+    try:
+        attachment = build_preflight_gate_attachment(candidate_gate_evidence, payload)
+        if type(prompt_bytes) is not bytes or not isinstance(prompt, ArtifactRef):
+            return ["preflight prompt requires reference and exact bytes"]
+        if (hashlib.sha256(prompt_bytes).hexdigest(), len(prompt_bytes)) != (prompt.sha256, prompt.size_bytes):
+            return ["preflight prompt bytes do not bind reference"]
+        if not prompt_bytes.endswith(attachment) or prompt_bytes.count(_GATE_ATTACHMENT_MARKER) != 1:
+            return ["preflight prompt lacks its exact deterministic gate evidence attachment"]
+        prompt_bytes.decode("utf-8")
+    except (CompilationError, UnicodeError, ValueError) as exc:
+        return [str(exc)]
+    return []
 
 
 def _route_rank(route: Any) -> int | None:
@@ -872,6 +936,10 @@ def apply_preflight(
     runtime: Any,
     bound_preflight: BoundPreflightResult,
     ontologies: cmr_contracts.Ontologies,
+    *,
+    candidate_gate_evidence: cmr_gate_evidence.BoundGateEvidence,
+    replacement_gate_evidence: cmr_gate_evidence.BoundGateEvidence | None,
+    brief_bytes: bytes,
 ) -> PreflightTransition:
     if not isinstance(bound_preflight, BoundPreflightResult):
         raise CompilationError(
@@ -904,7 +972,22 @@ def apply_preflight(
             "artifact_binding_invalid",
             ["candidate evidence reference does not bind candidate evidence"],
         )
-    candidate_decision = compile_route(candidate_evidence, runtime, ontologies)
+    candidate_decision = compile_route(candidate_evidence, runtime, ontologies,
+        gate_evidence=candidate_gate_evidence, brief_bytes=brief_bytes)
+    try:
+        attached_gate = cmr_contracts.strict_json_object(
+            bound_preflight.candidate_gate_evidence_bytes, "candidate gate evidence"
+        )
+    except ValueError as exc:
+        raise CompilationError("artifact_binding_invalid", [str(exc)]) from exc
+    if not _json_type_equal(attached_gate, candidate_gate_evidence.to_dict()):
+        raise CompilationError("artifact_binding_invalid", ["preflight attachment does not bind candidate gate evidence"])
+    attachment_errors = validate_preflight_gate_attachment(
+        bound_preflight.prompt_bytes, bound_preflight.prompt,
+        bound_preflight.candidate_gate_evidence, bound_preflight.candidate_gate_evidence_bytes,
+    )
+    if attachment_errors:
+        raise CompilationError("artifact_binding_invalid", attachment_errors)
     candidate_decision_payload = _canonical_json_bytes(candidate_decision)
     if (
         hashlib.sha256(candidate_decision_payload).hexdigest()
@@ -918,6 +1001,8 @@ def apply_preflight(
         )
 
     outcome = bound_preflight.result["outcome"]
+    if outcome != "replace" and replacement_gate_evidence is not None:
+        raise CompilationError("artifact_binding_invalid", ["non-replace preflight forbids replacement gate evidence"])
     if outcome == "accept":
         return PreflightTransition(
             outcome="accepted",
@@ -938,7 +1023,15 @@ def apply_preflight(
     replacement_evidence = copy.deepcopy(dict(candidate_evidence))
     for field in ("fact_ids", "uncertainty_ids", "action_intents"):
         replacement_evidence[field] = copy.deepcopy(bound_preflight.result[field])
-    replacement_decision = compile_route(replacement_evidence, runtime, ontologies)
+    occurrence_errors = _preflight_occurrence_errors(bound_preflight.occurrence,
+        task_id=bound_preflight.task_id, result=bound_preflight.result)
+    if occurrence_errors:
+        raise CompilationError("occurrence_invalid", occurrence_errors)
+    replacement_decision = _compile_route_with_source(
+        replacement_evidence, runtime, ontologies, gate_evidence=replacement_gate_evidence,
+        brief_bytes=brief_bytes, source_phase="preflight", source_raw=bound_preflight.raw.to_dict(),
+        source_thread_id=bound_preflight.occurrence.thread_id,
+    )
 
     monotonic_errors = validate_preflight_monotonicity(
         candidate_evidence,
@@ -1232,6 +1325,33 @@ def compile_route(
     evidence: Any,
     runtime: Any,
     ontologies: cmr_contracts.Ontologies,
+    *,
+    gate_evidence: cmr_gate_evidence.BoundGateEvidence,
+    brief_bytes: bytes,
+) -> dict[str, Any]:
+    _raise_first_evidence_error(evidence, ontologies)
+    return _compile_route_with_source(evidence, runtime, ontologies,
+        gate_evidence=gate_evidence, brief_bytes=brief_bytes, source_phase="controller",
+        source_raw=evidence["raw"], source_thread_id=evidence["occurrence"]["thread_id"])
+
+
+def gate_evidence_context(
+    evidence: Mapping[str, Any], runtime: Mapping[str, Any], *,
+    source_phase: str = "controller", source_raw: Mapping[str, Any] | None = None,
+    source_thread_id: str | None = None,
+) -> cmr_gate_evidence.GateEvidenceContext:
+    return cmr_gate_evidence.GateEvidenceContext(
+        task_id=evidence["task_id"], task_phase=runtime["task_phase"], brief=evidence["brief"],
+        source_phase=source_phase, source_raw=evidence["raw"] if source_raw is None else source_raw,
+        source_thread_id=evidence["occurrence"]["thread_id"] if source_thread_id is None else source_thread_id,
+        semantic={field: copy.deepcopy(evidence[field]) for field in ("fact_ids", "uncertainty_ids", "action_intents")},
+    )
+
+
+def _compile_route_with_source(
+    evidence: Any, runtime: Any, ontologies: cmr_contracts.Ontologies, *,
+    gate_evidence: cmr_gate_evidence.BoundGateEvidence | None, brief_bytes: bytes,
+    source_phase: str, source_raw: Mapping[str, Any], source_thread_id: str,
 ) -> dict[str, Any]:
     _raise_first_evidence_error(evidence, ontologies)
     runtime_errors, recurrence = _runtime_errors_and_recurrence(runtime, ontologies)
@@ -1239,6 +1359,14 @@ def compile_route(
         raise CompilationError("runtime_input_invalid", runtime_errors)
     assert isinstance(evidence, Mapping)
     assert isinstance(runtime, Mapping)
+    if not isinstance(gate_evidence, cmr_gate_evidence.BoundGateEvidence):
+        raise CompilationError("artifact_binding_invalid", ["compile requires bound gate evidence, including an explicit empty artifact"])
+    try:
+        gate_evidence.assert_matches(gate_evidence_context(evidence, runtime,
+            source_phase=source_phase, source_raw=source_raw, source_thread_id=source_thread_id),
+            brief_bytes, ontologies)
+    except cmr_gate_evidence.GateEvidenceError as exc:
+        raise CompilationError("artifact_binding_invalid", exc.errors) from exc
 
     facts = list(evidence["fact_ids"])
     fact_entries = {
@@ -2013,8 +2141,10 @@ __all__ = [
     "apply_preflight",
     "bind_controller_result",
     "bind_preflight_result",
+    "build_preflight_gate_attachment",
     "compile_route",
     "derive_recurrence",
+    "gate_evidence_context",
     "expected_compiler_schemas",
     "validate_route_evidence",
     "validate_runtime_input",
