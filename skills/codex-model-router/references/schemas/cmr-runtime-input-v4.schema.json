@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-runtime-input-v1.schema.json",
+  "$id": "cmr-runtime-input-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,7 +13,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-runtime-input-v1"
+      "const": "cmr-runtime-input-v4"
     },
     "task_phase": {
       "type": "string",
@@ -124,7 +124,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-authorization-registry-v1"
+          "const": "cmr-authorization-registry-v4"
         },
         "entries": {
           "type": "array",

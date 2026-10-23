@@ -1,7 +1,7 @@
 interface:
   display_name: "Codex Model Router"
-  short_description: "GPT-6 Luna/Sol/Astra routing for SDD"
-  default_prompt: "Run the CMR host dependency preflight, then use $codex-model-router to compile and validate this task route before Superpowers SDD."
+  short_description: "Sol coordination with adaptive Luna effort for SDD"
+  default_prompt: "Use $codex-model-router with Sol/medium coordination, Luna/xhigh for clear eligible implementation, and Luna/max for dense approved bounded local logic; retain actual worker execution evidence."
 
 policy:
   allow_implicit_invocation: true

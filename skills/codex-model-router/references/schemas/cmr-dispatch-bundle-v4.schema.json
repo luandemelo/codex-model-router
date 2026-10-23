@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-dispatch-bundle-v1.schema.json",
+  "$id": "cmr-dispatch-bundle-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-dispatch-bundle-v1"
+      "const": "cmr-dispatch-bundle-v4"
     },
     "task_id": {
       "type": "string",

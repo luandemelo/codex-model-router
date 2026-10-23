@@ -46,7 +46,7 @@ class ContractTests(unittest.TestCase):
 
     def test_occurrence_usage_schema_has_exact_five_token_counters(self) -> None:
         schema = contracts.expected_published_schemas(self.ontologies)[
-            "cmr-occurrence-audit-v1.schema.json"
+            "cmr-occurrence-audit-v4.schema.json"
         ]["$defs"]["UsageEvidence"]
         fields = [
             "input_tokens",
@@ -65,16 +65,17 @@ class ContractTests(unittest.TestCase):
                     {"type": "integer", "minimum": 0},
                 )
 
-    def test_gpt6_route_schemas_allow_exactly_four_host_supported_pairs(self) -> None:
+    def test_gpt6_route_schemas_allow_exactly_five_host_supported_pairs(self) -> None:
         routes = {
-            ("gpt-6-luna", "medium"),
-            ("gpt-6-sol", "medium"),
-            ("gpt-6-sol", "high"),
-            ("gpt-6-astra", "max"),
+            ("gpt-6-luna", "xhigh"),
+            ("gpt-6-luna", "max"),
+            ("gpt-6.1-sol", "medium"),
+            ("gpt-6.1-sol", "high"),
+            ("gpt-6.1-sol", "max"),
         }
         schemas = contracts.expected_published_schemas(self.ontologies)
-        route = schemas["cmr-route-decision-v1.schema.json"]["$defs"]["Route"]
-        occurrence = schemas["cmr-occurrence-audit-v1.schema.json"]
+        route = schemas["cmr-route-decision-v4.schema.json"]["$defs"]["Route"]
+        occurrence = schemas["cmr-occurrence-audit-v4.schema.json"]
         for label, choices in (
             ("decision", route.get("oneOf", [])),
             (
@@ -113,7 +114,7 @@ class ContractTests(unittest.TestCase):
 
     def test_controller_accepts_only_minimal_canonical_envelope(self) -> None:
         value = {
-            "schema_version": "cmr-controller-result-v1",
+            "schema_version": "cmr-controller-result-v4",
             "fact_ids": ["clear_isolated_low_risk"],
             "uncertainty_ids": [],
             "action_intents": [],
@@ -147,7 +148,7 @@ class ContractTests(unittest.TestCase):
         for label, fact_ids, uncertainty_ids, action_intents in cases:
             with self.subTest(label=label):
                 value = {
-                    "schema_version": "cmr-controller-result-v1",
+                    "schema_version": "cmr-controller-result-v4",
                     "fact_ids": fact_ids,
                     "uncertainty_ids": uncertainty_ids,
                     "action_intents": action_intents,
@@ -179,7 +180,7 @@ class ContractTests(unittest.TestCase):
         for action, target in valid_targets.items():
             with self.subTest(action=action):
                 value = {
-                    "schema_version": "cmr-controller-result-v1",
+                    "schema_version": "cmr-controller-result-v4",
                     "fact_ids": [],
                     "uncertainty_ids": [],
                     "action_intents": [{"action": action, "target": target}],
@@ -204,7 +205,7 @@ class ContractTests(unittest.TestCase):
         for action, target in invalid_targets.items():
             with self.subTest(action=action):
                 value = {
-                    "schema_version": "cmr-controller-result-v1",
+                    "schema_version": "cmr-controller-result-v4",
                     "fact_ids": [],
                     "uncertainty_ids": [],
                     "action_intents": [{"action": action, "target": target}],
@@ -218,7 +219,7 @@ class ContractTests(unittest.TestCase):
 
     def test_controller_allows_missing_target_but_rejects_empty_unknown_or_bad_order(self) -> None:
         base = {
-            "schema_version": "cmr-controller-result-v1",
+            "schema_version": "cmr-controller-result-v4",
             "fact_ids": [],
             "uncertainty_ids": [],
         }
@@ -262,12 +263,12 @@ class ContractTests(unittest.TestCase):
 
         invalid = (
             {
-                "schema_version": "cmr-preflight-result-v1",
+                "schema_version": "cmr-preflight-result-v4",
                 "outcome": "accept",
                 "fact_ids": [],
             },
             {
-                "schema_version": "cmr-preflight-result-v1",
+                "schema_version": "cmr-preflight-result-v4",
                 "outcome": "replace",
                 "fact_ids": [],
                 "uncertainty_ids": [],
@@ -275,16 +276,16 @@ class ContractTests(unittest.TestCase):
                 "blocker_ids": ["ambiguous_semantics"],
             },
             {
-                "schema_version": "cmr-preflight-result-v1",
+                "schema_version": "cmr-preflight-result-v4",
                 "outcome": "block",
                 "blocker_ids": [],
             },
             {
-                "schema_version": "cmr-preflight-result-v1",
+                "schema_version": "cmr-preflight-result-v4",
                 "outcome": "block",
                 "blocker_ids": ["insufficient_task_evidence", "ambiguous_semantics"],
             },
-            {"schema_version": "cmr-preflight-result-v1", "outcome": "retry"},
+            {"schema_version": "cmr-preflight-result-v4", "outcome": "retry"},
         )
         for value in invalid:
             with self.subTest(value=value):
@@ -295,7 +296,7 @@ class ContractTests(unittest.TestCase):
     def test_planner_uses_frozen_task_order_and_public_reason_order(self) -> None:
         task_ids = ["T-001", "T-002", "T-003"]
         value = {
-            "schema_version": "cmr-planner-result-v1",
+            "schema_version": "cmr-planner-result-v4",
             "safe_lanes": [
                 {
                     "task_id": "T-001",
@@ -315,7 +316,7 @@ class ContractTests(unittest.TestCase):
         )
         self.assertEqual(
             contracts.validate_planner_result(
-                {"schema_version": "cmr-planner-result-v1", "safe_lanes": []},
+                {"schema_version": "cmr-planner-result-v4", "safe_lanes": []},
                 [],
                 self.ontologies,
             ),
@@ -350,7 +351,7 @@ class ContractTests(unittest.TestCase):
                 self.assertNotEqual(
                     contracts.validate_planner_result(
                         {
-                            "schema_version": "cmr-planner-result-v1",
+                            "schema_version": "cmr-planner-result-v4",
                             "safe_lanes": safe_lanes,
                         },
                         task_ids,
@@ -439,31 +440,31 @@ class ContractTests(unittest.TestCase):
         mutations: tuple[tuple[str, str, Callable[[dict[str, Any]], None]], ...] = (
             (
                 "required",
-                "cmr-controller-result-v1.schema.json",
+                "cmr-controller-result-v4.schema.json",
                 lambda schema: schema["required"].remove("action_intents"),
             ),
             (
                 "enum",
-                "cmr-controller-result-v1.schema.json",
+                "cmr-controller-result-v4.schema.json",
                 lambda schema: schema["properties"]["fact_ids"]["items"]["enum"].append(
                     "github"
                 ),
             ),
             (
                 "const",
-                "cmr-preflight-result-v1.schema.json",
+                "cmr-preflight-result-v4.schema.json",
                 lambda schema: schema["oneOf"][0]["properties"]["schema_version"].__setitem__(
                     "const", "wrong"
                 ),
             ),
             (
                 "additional properties",
-                "cmr-planner-result-v1.schema.json",
+                "cmr-planner-result-v4.schema.json",
                 lambda schema: schema.__setitem__("additionalProperties", True),
             ),
             (
                 "one-of branch closure",
-                "cmr-preflight-result-v1.schema.json",
+                "cmr-preflight-result-v4.schema.json",
                 lambda schema: schema["oneOf"][1].__setitem__("additionalProperties", True),
             ),
         )

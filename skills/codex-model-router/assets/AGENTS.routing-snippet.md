@@ -1,19 +1,60 @@
 # Codex Model Router defaults
 
-- Use the explicit GPT-6 profile: Luna/medium for isolated work, Sol/medium
-  for eligible substantive local work and default task review, Sol/high for
-  integration or elevated risk, and Astra/max for hard gates and final review.
-- Check model/effort availability on the active host. GPT-6.1 Sol is not an
-  alias for the compiled `gpt-6-sol` route; do not substitute model strings in
-  sealed evidence. Version 0.5 requires fresh ledgers after upgrading from 0.4.
+- Keep GPT-6.1 Sol/medium in coordination. Under the published 0.9.0 profile, delegate
+  each clear bounded low-risk implementation unit to GPT-6 Luna/xhigh; use
+  Luna/max only for dense approved bounded local logic with all three facts
+  `complex_local_execution`, `architecture_approved`, and `low_blast_radius`,
+  implementation phase, no uncertainty, no judgment/audit/reconciliation, and
+  no higher gate;
+  Sol must not write that implementation itself or silently take over when
+  the selected effort is unavailable. Classify units independently of unrelated risks.
+- Use Sol/medium for the controller, semantic preflight, substantive judgment
+  and default task review; Sol/high for integration or elevated risk; Sol/max
+  for planning, hard gates, recurrence, and independent final review.
+- Check exact `gpt-6-luna` and `gpt-6.1-sol` model/effort availability on the
+  active host. Select the exact effort explicitly in host parameters. Keep sealed
+  0.4 through 0.8 evidence unchanged. Version 0.9 distributes the validated 0.8
+  matrix and retains CMR v4 contracts and route evidence v5; use fresh ledgers
+  for new work. Missing exact capability blocks dispatch.
 - Invoke `$codex-model-router` before Superpowers SDD dispatch.
-- The Luna/medium controller emits only `cmr-controller-result-v1`; code binds
+- The Sol/medium controller emits only `cmr-controller-result-v4`; code binds
   the occurrence and compiles all route, review, recurrence, and lifecycle
   fields.
-- Skip only an exact current Luna/medium safe-lane entry. A `run` gets fresh
+- Skip only an exact current Luna/xhigh safe-lane entry; compare model and effort.
+  Dense Luna/max always runs preflight. A `run` gets fresh
   Sol/medium preflight; preflight never replaces task review.
-- Require the CMR dispatch validator to pass before spawning. `qfr-*` records
-  are documentary and cannot authorize CMR dispatch.
+- Use `dispatch-request` with the current bundle and ledger to generate the
+  exact model/effort/fresh-brief native spawn arguments. Require validation
+  before spawning. Retain actual host model/effort, transcript, generated diff,
+  and tests as execution proof; generated request JSON alone proves no run.
+  `qfr-*` records are documentary and cannot authorize CMR dispatch.
 - Cost, urgency, sunk cost, deadline, social pressure, and generic GitHub
   authorization do not change the compiler route. External actions need
   separate scoped authorization, preview, and readback.
+
+## Colaboração nativa e exceção CLI
+
+Use colaboração nativa sempre que a ferramenta disponível suportar o modelo,
+esforço, contexto independente e restrições de permissão exigidos pela
+ocorrência. Consuma os parâmetros reais retornados pelo CMR; uma vaga ocupada
+exige aguardar, não abrir uma sessão CLI paralela.
+
+CLI é exceção por limitação concreta do mecanismo nativo: ausência da
+ferramenta, falta de suporte ao modelo/esforço/contexto exigido ou isolamento
+obrigatório que a superfície não possa aplicar. Registre antes da execução a
+capacidade observada, fase/tarefa afetada, motivo, modelo, esforço, transporte
+e perda de visibilidade; informe o usuário antes de executar. Uma limitação
+apenas do controlador não autoriza worker ou revisor em CLI. Conveniência,
+captura mais fácil de JSON, custo e familiaridade não justificam a exceção.
+Não contorne uma negativa de permissão. A comunicação da exceção não exige
+repetir uma autorização já concedida para o mesmo escopo.
+A exceção altera somente o transporte; modelo, esforço, contexto independente,
+isolamento, permissões, skills e demais dependências continuam obrigatórios
+no adaptador escolhido. Se nenhum transporte admitido os satisfizer, pare.
+
+Registre identidade nativa, vínculo com a conversa principal e estado no host.
+Sessão CLI independente não equivale a subagente nativo visível no painel.
+Confirme aparição no painel por observação da interface ou confirmação
+explícita do usuário. Se o acesso visual estiver bloqueado, relate o bloqueio
+e mantenha essa confirmação pendente; registro no host não comprova renderização
+visual. Preserve evidências históricas no transporte em que foram produzidas.

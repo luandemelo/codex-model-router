@@ -51,10 +51,11 @@ SELECTOR_TRIGGER_IDS = (
     *cmr_contracts.UNCERTAINTY_IDS,
 )
 _REVIEW_ROUTES = {
-    ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
-    ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
-    ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
-    ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
+    ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "high"),
+    ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
 }
 _USAGE_FIELDS = (
     "input_tokens",
@@ -343,8 +344,8 @@ def _validate_occurrence_record(
     if not isinstance(value, Mapping):
         return sorted(set(errors))
     label = "route evidence.occurrence"
-    if value.get("schema_version") != "cmr-occurrence-audit-v1":
-        errors.append(f"{label}.schema_version must equal cmr-occurrence-audit-v1")
+    if value.get("schema_version") != "cmr-occurrence-audit-v4":
+        errors.append(f"{label}.schema_version must equal cmr-occurrence-audit-v4")
     phase = value.get("phase")
     if not isinstance(phase, str) or phase != "controller":
         errors.append(f"{label}.phase is not allowed for route evidence")
@@ -359,7 +360,7 @@ def _validate_occurrence_record(
     if value.get("response_policy") != "closed_json":
         errors.append(f"{label}.response_policy must equal closed_json")
     if (value.get("model"), value.get("reasoning_effort")) != (
-        "gpt-6-luna",
+        "gpt-6.1-sol",
         "medium",
     ):
         errors.append(f"{label} route does not match its phase")
@@ -405,7 +406,7 @@ def _semantic_envelope_errors(
     value: Mapping[str, Any], ontologies: cmr_contracts.Ontologies
 ) -> list[str]:
     controller_shape = {
-        "schema_version": "cmr-controller-result-v1",
+        "schema_version": "cmr-controller-result-v4",
         "fact_ids": value.get("fact_ids"),
         "uncertainty_ids": value.get("uncertainty_ids"),
         "action_intents": value.get("action_intents"),
@@ -445,9 +446,9 @@ def _route_evidence_error_groups(
     artifact_errors: list[str] = []
     if not isinstance(value, Mapping):
         return sorted(set(controller_errors)), [], []
-    if value.get("schema_version") != "cmr-route-evidence-v2":
+    if value.get("schema_version") != "cmr-route-evidence-v5":
         controller_errors.append(
-            "route evidence.schema_version must equal cmr-route-evidence-v2"
+            "route evidence.schema_version must equal cmr-route-evidence-v5"
         )
     task_id = value.get("task_id")
     if not _is_nonempty_string(task_id):
@@ -556,7 +557,7 @@ def bind_controller_result(
     if binding_errors:
         raise CompilationError("artifact_binding_invalid", binding_errors)
     return {
-        "schema_version": "cmr-route-evidence-v2",
+        "schema_version": "cmr-route-evidence-v5",
         "task_id": task_id,
         "brief": brief.to_dict(),
         "fact_ids": list(result.get("fact_ids", [])),
@@ -578,8 +579,8 @@ def _preflight_occurrence_errors(
     value = occurrence.to_record()
     label = "preflight occurrence"
     errors = _exact_fields(value, set(_OCCURRENCE_FIELDS), label)
-    if value.get("schema_version") != "cmr-occurrence-audit-v1":
-        errors.append(f"{label}.schema_version must equal cmr-occurrence-audit-v1")
+    if value.get("schema_version") != "cmr-occurrence-audit-v4":
+        errors.append(f"{label}.schema_version must equal cmr-occurrence-audit-v4")
     expected_values = {
         "phase": "preflight",
         "scope_kind": "task",
@@ -587,7 +588,7 @@ def _preflight_occurrence_errors(
         "round_index": None,
         "task_id": task_id,
         "response_policy": "closed_json",
-        "model": "gpt-6-sol",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "medium",
         "fork_turns": "none",
         "thread_policy": "fresh",
@@ -712,17 +713,18 @@ def _route_rank(route: Any) -> int | None:
         return None
     pair = (route.get("model"), route.get("reasoning_effort"))
     ranks = {
-        ("gpt-6-luna", "medium"): 0,
-        ("gpt-6-sol", "medium"): 1,
-        ("gpt-6-sol", "high"): 2,
-        ("gpt-6-astra", "max"): 3,
+        ("gpt-6-luna", "xhigh"): 0,
+        ("gpt-6-luna", "max"): 1,
+        ("gpt-6.1-sol", "medium"): 2,
+        ("gpt-6.1-sol", "high"): 3,
+        ("gpt-6.1-sol", "max"): 4,
     }
     return ranks.get(pair)
 
 
-def _astra_max_adjudication() -> dict[str, str]:
+def _sol_max_adjudication() -> dict[str, str]:
     return {
-        "model": "gpt-6-astra",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "max",
         "fork_turns": "none",
         "thread_policy": "fresh",
@@ -930,7 +932,7 @@ def apply_preflight(
             replacement_evidence=None,
             final_decision=None,
             blocker_ids=tuple(bound_preflight.result["blocker_ids"]),
-            adjudication=_astra_max_adjudication(),
+            adjudication=_sol_max_adjudication(),
         )
 
     replacement_evidence = copy.deepcopy(dict(candidate_evidence))
@@ -952,7 +954,7 @@ def apply_preflight(
             replacement_evidence=None,
             final_decision=None,
             blocker_ids=("preflight_non_monotonic",),
-            adjudication=_astra_max_adjudication(),
+            adjudication=_sol_max_adjudication(),
         )
     return PreflightTransition(
         outcome="replaced",
@@ -1060,9 +1062,9 @@ def _validate_registry(
     errors = _exact_fields(value, {"schema_version", "entries"}, label)
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-authorization-registry-v1":
+    if value.get("schema_version") != "cmr-authorization-registry-v4":
         errors.append(
-            f"{label}.schema_version must equal cmr-authorization-registry-v1"
+            f"{label}.schema_version must equal cmr-authorization-registry-v4"
         )
     entries = value.get("entries")
     if not isinstance(entries, list):
@@ -1090,7 +1092,7 @@ def _validate_registry(
         action = entry.get("action")
         target = entry.get("target")
         semantic = {
-            "schema_version": "cmr-controller-result-v1",
+            "schema_version": "cmr-controller-result-v4",
             "fact_ids": [],
             "uncertainty_ids": [],
             "action_intents": [{"action": action, "target": target}],
@@ -1130,8 +1132,8 @@ def _runtime_errors_and_recurrence(
     inactive = Recurrence(False, None, None)
     if not isinstance(value, Mapping):
         return sorted(set(errors)), inactive
-    if value.get("schema_version") != "cmr-runtime-input-v1":
-        errors.append("runtime input.schema_version must equal cmr-runtime-input-v1")
+    if value.get("schema_version") != "cmr-runtime-input-v4":
+        errors.append("runtime input.schema_version must equal cmr-runtime-input-v4")
     task_phase = value.get("task_phase")
     if not isinstance(task_phase, str) or task_phase not in {
         "implementation",
@@ -1165,18 +1167,10 @@ def validate_runtime_input(
 
 
 def _eligible_scoped_substantive_facts(fact_ids: Sequence[str]) -> list[str]:
-    facts = set(fact_ids)
-    eligible: set[str] = set()
-    if "low_blast_radius" in facts:
-        eligible.update(
-            facts & {"audit", "judgment_required", "reconciliation"}
-        )
-    if {
-        "complex_local_execution",
-        "architecture_approved",
-    }.issubset(facts):
-        eligible.add("complex_local_execution")
-    return [fact_id for fact_id in fact_ids if fact_id in eligible]
+    return [
+        fact_id for fact_id in fact_ids
+        if fact_id in {"audit", "judgment_required", "reconciliation"}
+    ]
 
 
 def _compile_external_actions(
@@ -1274,14 +1268,23 @@ def compile_route(
         runtime["task_phase"] == "final_review"
         and runtime["review_scope"] == "branch"
     )
+    dense_local = (
+        runtime["task_phase"] == "implementation"
+        and not eligible
+        and not evidence["uncertainty_ids"]
+        and {"complex_local_execution", "architecture_approved", "low_blast_radius"}.issubset(facts)
+    )
+    local_judgment = "complex_local_execution" in facts and not dense_local
     if final_review or recurrence.active or hard_gates:
-        worker = ("gpt-6-astra", "max")
+        worker = ("gpt-6.1-sol", "max")
     elif elevated:
-        worker = ("gpt-6-sol", "high")
-    elif eligible:
-        worker = ("gpt-6-sol", "medium")
+        worker = ("gpt-6.1-sol", "high")
+    elif eligible or local_judgment:
+        worker = ("gpt-6.1-sol", "medium")
+    elif dense_local:
+        worker = ("gpt-6-luna", "max")
     else:
-        worker = ("gpt-6-luna", "medium")
+        worker = ("gpt-6-luna", "xhigh")
     review = _REVIEW_ROUTES[worker]
 
     if final_review:
@@ -1306,6 +1309,10 @@ def compile_route(
         reason_id = elevated[0]
     elif eligible:
         reason_id = eligible[0]
+    elif local_judgment:
+        reason_id = "complex_local_execution"
+    elif dense_local:
+        reason_id = "dense_approved_local_execution"
     else:
         reason_id = "default_clear_isolated_work"
     justification = (
@@ -1314,7 +1321,7 @@ def compile_route(
     )
 
     return {
-        "schema_version": "cmr-route-decision-v1",
+        "schema_version": "cmr-route-decision-v4",
         "task_id": evidence["task_id"],
         "role": role,
         "brief": dict(evidence["brief"]),
@@ -1394,14 +1401,14 @@ def _occurrence_evidence_schema() -> dict[str, Any]:
         "additionalProperties": False,
         "required": list(_OCCURRENCE_FIELDS),
         "properties": {
-            "schema_version": {"const": "cmr-occurrence-audit-v1"},
+            "schema_version": {"const": "cmr-occurrence-audit-v4"},
             "phase": {"const": "controller"},
             "scope_kind": {"const": "task"},
             "scope_id": {"type": "string", "minLength": 1},
             "round_index": {"type": "null"},
             "task_id": {"type": "string", "minLength": 1},
             "response_policy": {"const": "closed_json"},
-            "model": {"const": "gpt-6-luna"},
+            "model": {"const": "gpt-6.1-sol"},
             "reasoning_effort": {"const": "medium"},
             "fork_turns": {"const": "none"},
             "prompt_sha256": {
@@ -1473,7 +1480,7 @@ def _route_evidence_schema(
     ontologies: cmr_contracts.Ontologies,
 ) -> dict[str, Any]:
     properties = {
-        "schema_version": {"const": "cmr-route-evidence-v2"},
+        "schema_version": {"const": "cmr-route-evidence-v5"},
         "task_id": {"type": "string", "minLength": 1},
         "brief": {"$ref": "#/$defs/ArtifactRef"},
         **_semantic_schema_properties(ontologies),
@@ -1482,7 +1489,7 @@ def _route_evidence_schema(
     }
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-route-evidence-v2.schema.json",
+        "$id": "cmr-route-evidence-v5.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": [
@@ -1510,7 +1517,7 @@ def _runtime_input_schema(
 ) -> dict[str, Any]:
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-runtime-input-v1.schema.json",
+        "$id": "cmr-runtime-input-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": [
@@ -1522,7 +1529,7 @@ def _runtime_input_schema(
             "authorization_registry",
         ],
         "properties": {
-            "schema_version": {"const": "cmr-runtime-input-v1"},
+            "schema_version": {"const": "cmr-runtime-input-v4"},
             "task_phase": {
                 "type": "string",
                 "enum": ["implementation", "final_review"],
@@ -1591,7 +1598,7 @@ def _runtime_input_schema(
                 "required": ["schema_version", "entries"],
                 "properties": {
                     "schema_version": {
-                        "const": "cmr-authorization-registry-v1"
+                        "const": "cmr-authorization-registry-v4"
                     },
                     "entries": {
                         "type": "array",
@@ -1640,10 +1647,11 @@ def _route_schema() -> dict[str, Any]:
                 },
             }
             for model, effort in (
-                ("gpt-6-luna", "medium"),
-                ("gpt-6-sol", "medium"),
-                ("gpt-6-sol", "high"),
-                ("gpt-6-astra", "max"),
+                ("gpt-6-luna", "xhigh"),
+                ("gpt-6-luna", "max"),
+                ("gpt-6.1-sol", "medium"),
+                ("gpt-6.1-sol", "high"),
+                ("gpt-6.1-sol", "max"),
             )
         ]
     }
@@ -1662,9 +1670,9 @@ def _review_route_schema() -> dict[str, Any]:
                 },
             }
             for model, effort in (
-                ("gpt-6-sol", "medium"),
-                ("gpt-6-sol", "high"),
-                ("gpt-6-astra", "max"),
+                ("gpt-6.1-sol", "medium"),
+                ("gpt-6.1-sol", "high"),
+                ("gpt-6.1-sol", "max"),
             )
         ]
     }
@@ -1876,6 +1884,7 @@ def _route_decision_schema(
         "branch_final_review",
         "regression_after_declared_resolved",
         "recurring_failure",
+        "dense_approved_local_execution",
         "default_clear_isolated_work",
     ]
     required = [
@@ -1901,12 +1910,12 @@ def _route_decision_schema(
     ]
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-route-decision-v1.schema.json",
+        "$id": "cmr-route-decision-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": required,
         "properties": {
-            "schema_version": {"const": "cmr-route-decision-v1"},
+            "schema_version": {"const": "cmr-route-decision-v4"},
             "task_id": {"type": "string", "minLength": 1},
             "role": {
                 "type": "string",
@@ -1982,9 +1991,9 @@ def expected_compiler_schemas(
     ontologies: cmr_contracts.Ontologies,
 ) -> dict[str, dict[str, Any]]:
     schemas = {
-        "cmr-route-evidence-v2.schema.json": _route_evidence_schema(ontologies),
-        "cmr-runtime-input-v1.schema.json": _runtime_input_schema(ontologies),
-        "cmr-route-decision-v1.schema.json": _route_decision_schema(ontologies),
+        "cmr-route-evidence-v5.schema.json": _route_evidence_schema(ontologies),
+        "cmr-runtime-input-v4.schema.json": _runtime_input_schema(ontologies),
+        "cmr-route-decision-v4.schema.json": _route_decision_schema(ontologies),
     }
     # Task 3 owns the artifact schemas while Task 1's parity gate remains the
     # single published-contract entry point.

@@ -34,7 +34,7 @@ CONTROL_CWDS = {
 WORKER_CWD = {
     "kind": "plan_worktree",
     "path": "/workspace/codex-model-router",
-    "workspace_id": "cmr-v0.4.0-plan",
+    "workspace_id": "cmr-v0.8.0-plan",
     "base_head": BASE_HEAD,
     "head": WORK_HEAD,
     "read_only": False,
@@ -42,7 +42,7 @@ WORKER_CWD = {
 REVIEW_CWD = {
     "kind": "plan_worktree",
     "path": "/workspace/codex-model-router",
-    "workspace_id": "cmr-v0.4.0-plan",
+    "workspace_id": "cmr-v0.8.0-plan",
     "base_head": WORK_HEAD,
     "head": WORK_HEAD,
     "read_only": True,
@@ -51,7 +51,7 @@ REVIEW_CWD = {
 
 def release_scope_id(implementation_head: str, export_head: str) -> str:
     payload = (
-        f"cmr-release-scope-v1\n{implementation_head}\n{export_head}\n"
+        f"cmr-release-scope-v4\n{implementation_head}\n{export_head}\n"
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -81,9 +81,9 @@ class RuntimeTests(unittest.TestCase):
         forbidden_thread_ids: tuple[str, ...] = ("thread-used-before",),
     ) -> runtime.OccurrenceExpectation:
         routes = {
-            "planning": ("gpt-6-astra", "max"),
-            "controller": ("gpt-6-luna", "medium"),
-            "preflight": ("gpt-6-sol", "medium"),
+            "planning": ("gpt-6.1-sol", "max"),
+            "controller": ("gpt-6.1-sol", "medium"),
+            "preflight": ("gpt-6.1-sol", "medium"),
         }
         if phase == "planning":
             scope_kind = "plan"
@@ -118,7 +118,7 @@ class RuntimeTests(unittest.TestCase):
         phase: str = "worker",
         round_index: int | None = 0,
         initial_model: str = "gpt-6-luna",
-        initial_effort: str = "medium",
+        initial_effort: str = "max",
         scope_kind: str = "task",
         scope_id: str = "T-001",
         task_id: str | None = "T-001",
@@ -225,9 +225,9 @@ class RuntimeTests(unittest.TestCase):
 
     def test_gpt6_control_phases_bind_exact_supported_routes(self) -> None:
         routes = {
-            "planning": ("gpt-6-astra", "max", "planning_json", self.validate_planner),
-            "controller": ("gpt-6-luna", "medium", "controller_json", self.validate_controller),
-            "preflight": ("gpt-6-sol", "medium", "preflight_json", self.validate_preflight),
+            "planning": ("gpt-6.1-sol", "max", "planning_json", self.validate_planner),
+            "controller": ("gpt-6.1-sol", "medium", "controller_json", self.validate_controller),
+            "preflight": ("gpt-6.1-sol", "medium", "preflight_json", self.validate_preflight),
         }
         for phase, (model, effort, fixture, validator) in routes.items():
             with self.subTest(phase=phase):
@@ -239,9 +239,11 @@ class RuntimeTests(unittest.TestCase):
                 )
                 self.assertTrue(audit.accepted, audit.errors)
                 for old_model, old_effort in (
-                    ("gpt-5.6-luna", "xhigh"),
+                    ("gpt-5.6-luna", "max"),
                     ("gpt-5.6-sol", "max"),
-                    ("gpt-6.1-sol", "high"),
+                    ("gpt-6-sol", "high"),
+                    ("gpt-6-astra", "max"),
+                    ("gpt-6-luna", "medium"),
                 ):
                     old = dataclasses.replace(
                         expected, model=old_model, reasoning_effort=old_effort
@@ -253,9 +255,11 @@ class RuntimeTests(unittest.TestCase):
 
     def test_gpt6_sdd_constructor_rejects_old_and_unavailable_models(self) -> None:
         for model, effort in (
-            ("gpt-5.6-luna", "xhigh"),
+            ("gpt-5.6-luna", "max"),
             ("gpt-5.6-sol", "max"),
-            ("gpt-6.1-sol", "high"),
+            ("gpt-6-sol", "high"),
+            ("gpt-6-astra", "max"),
+            ("gpt-6-luna", "medium"),
         ):
             with self.subTest(model=model, effort=effort), self.assertRaises(ValueError):
                 self.sdd_expectation(initial_model=model, initial_effort=effort)
@@ -302,7 +306,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(audit.accepted)
         self.assertEqual(audit.ignored_empty_agent_messages, 1)
         self.assertEqual(
-            audit.raw_object["schema_version"], "cmr-controller-result-v1"
+            audit.raw_object["schema_version"], "cmr-controller-result-v4"
         )
         self.assertIsNone(audit.terminal_report)
 
@@ -412,7 +416,7 @@ class RuntimeTests(unittest.TestCase):
                 self.sdd_expectation(
                     phase="final_review",
                     round_index=None,
-                    initial_model="gpt-6-astra",
+                    initial_model="gpt-6.1-sol",
                     initial_effort="max",
                     scope_kind="release",
                     scope_id=release_id,
@@ -523,7 +527,7 @@ class RuntimeTests(unittest.TestCase):
                     expected = self.sdd_expectation(
                         phase=phase,
                         round_index=round_index,
-                        initial_model="gpt-6-astra",
+                        initial_model="gpt-6.1-sol",
                         initial_effort="max",
                         scope_kind="release",
                         scope_id=scope_id,
@@ -612,6 +616,7 @@ class RuntimeTests(unittest.TestCase):
                             "round_index": 1,
                             "response_policy": "closed_json",
                             "write_policy": "source_read_only",
+                            "reasoning_effort": "high",
                         }[field]
                     audit = runtime.audit_occurrence(
                         scenario_payload, metadata, scenario_expected, validator
@@ -786,16 +791,16 @@ class RuntimeTests(unittest.TestCase):
 
     def test_fix_escalation_and_matching_re_review_routes_are_derived(self) -> None:
         round_four_routes = {
-            ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
-            ("gpt-6-sol", "medium"): ("gpt-6-astra", "max"),
-            ("gpt-6-sol", "high"): ("gpt-6-astra", "max"),
-            ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
+            ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+            ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "max"),
+            ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "max"),
+            ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
         }
         review_routes = {
-            ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
-            ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
-            ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
-            ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
+            ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+            ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
+            ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "high"),
+            ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
         }
         for initial_route, round_four_route in round_four_routes.items():
             with self.subTest(initial_route=initial_route):
@@ -822,7 +827,7 @@ class RuntimeTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     (worker_five.model, worker_five.reasoning_effort),
-                    ("gpt-6-astra", "max"),
+                    ("gpt-6.1-sol", "max"),
                 )
 
                 re_review_four = self.sdd_expectation(
@@ -845,7 +850,7 @@ class RuntimeTests(unittest.TestCase):
         escalated_review = self.sdd_expectation(
             phase="re_review",
             round_index=4,
-            initial_model="gpt-6-sol",
+            initial_model="gpt-6.1-sol",
             initial_effort="medium",
             prior_thread_id="thread-implementer-fix4",
             forbidden_thread_ids=("thread-implementer-fix4",),
@@ -871,7 +876,7 @@ class RuntimeTests(unittest.TestCase):
         sol_review_four = self.sdd_expectation(
             phase="re_review",
             round_index=4,
-            initial_model="gpt-6-sol",
+            initial_model="gpt-6.1-sol",
             initial_effort="high",
             prior_thread_id="thread-implementer-fix4",
         )
@@ -890,7 +895,7 @@ class RuntimeTests(unittest.TestCase):
                 dataclasses.replace(
                     reviewer,
                     model="gpt-6-luna",
-                    reasoning_effort="xhigh",
+                    reasoning_effort="max",
                 ),
                 "sdd_reviewer",
                 "thread-reviewer-001",
@@ -941,7 +946,7 @@ class RuntimeTests(unittest.TestCase):
             phase="worker",
             round_index=1,
             initial_model="gpt-6-luna",
-            initial_effort="medium",
+            initial_effort="max",
             scope_kind="release",
             scope_id=initial_scope,
             task_id=None,
@@ -949,7 +954,7 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(
             (release_worker.model, release_worker.reasoning_effort),
-            ("gpt-6-astra", "max"),
+            ("gpt-6.1-sol", "max"),
         )
         self.assertEqual(release_worker.thread_policy, "fresh")
         worker_audit = self.audit(
@@ -965,7 +970,7 @@ class RuntimeTests(unittest.TestCase):
             phase="re_review",
             round_index=1,
             initial_model="gpt-6-luna",
-            initial_effort="medium",
+            initial_effort="max",
             scope_kind="release",
             scope_id=final_scope,
             task_id=None,
@@ -974,7 +979,7 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(
             (release_review.model, release_review.reasoning_effort),
-            ("gpt-6-astra", "max"),
+            ("gpt-6.1-sol", "max"),
         )
         review_audit = self.audit(
             "sdd_reviewer",
@@ -1044,7 +1049,7 @@ class RuntimeTests(unittest.TestCase):
             scope_kind="release",
             scope_id=scope_id,
             task_id=None,
-            initial_model="gpt-6-astra",
+            initial_model="gpt-6.1-sol",
             initial_effort="max",
         )
         release_payload = self.payload("sdd_worker_fresh4")
@@ -1071,7 +1076,7 @@ class RuntimeTests(unittest.TestCase):
                 scope_kind="release",
                 scope_id=release_scope_id(BASE_HEAD, EXPORT_HEAD),
                 task_id=None,
-                initial_model="gpt-6-astra",
+                initial_model="gpt-6.1-sol",
                 initial_effort="max",
             )
 
@@ -1283,9 +1288,9 @@ class AccountingTests(unittest.TestCase):
         self, phase: str, task_id: str | None = None
     ) -> runtime.OccurrenceExpectation:
         routes = {
-            "planning": ("gpt-6-astra", "max"),
-            "controller": ("gpt-6-luna", "medium"),
-            "preflight": ("gpt-6-sol", "medium"),
+            "planning": ("gpt-6.1-sol", "max"),
+            "controller": ("gpt-6.1-sol", "medium"),
+            "preflight": ("gpt-6.1-sol", "medium"),
         }
         if phase == "planning":
             scope_kind = "plan"
@@ -1325,9 +1330,9 @@ class AccountingTests(unittest.TestCase):
         prior_thread_id: str | None = None,
     ) -> runtime.OccurrenceExpectation:
         if scope_kind == "release":
-            initial_model, initial_effort = "gpt-6-astra", "max"
+            initial_model, initial_effort = "gpt-6.1-sol", "max"
         else:
-            initial_model, initial_effort = "gpt-6-luna", "medium"
+            initial_model, initial_effort = "gpt-6-luna", "max"
         return runtime.OccurrenceExpectation.for_sdd(
             phase=phase,
             scope_kind=scope_kind,
@@ -1811,7 +1816,7 @@ class AccountingTests(unittest.TestCase):
         }
         schema = contracts.expected_published_schemas(
             contracts.load_ontologies(SKILL_ROOT)
-        )["cmr-accounting-summary-v1.schema.json"]
+        )["cmr-accounting-summary-v4.schema.json"]
         self.assertEqual(set(schema["required"]), expected)
         self.assertFalse(schema["additionalProperties"])
 

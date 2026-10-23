@@ -1,7 +1,7 @@
 {
   "name": "codex-model-router",
-  "version": "0.5.0",
-  "description": "Risk-based GPT-6 Luna/Sol/Astra routing for Codex development tasks.",
+  "version": "0.9.0",
+  "description": "Risk-based Codex routing with GPT-6.1 Sol and GPT-6 Luna.",
   "author": {
     "name": "Luan de Melo",
     "url": "https://github.com/luandemelo"
@@ -14,14 +14,13 @@
     "model-routing",
     "multi-agent",
     "luna",
-    "sol",
-    "astra"
+    "gpt-6.1-sol"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Model Router",
-    "shortDescription": "Risk-based GPT-6 Luna, Sol and Astra routing",
-    "longDescription": "Routes Codex development work through deterministic quality gates, fresh context, and independent review.",
+    "shortDescription": "Risk-based GPT-6.1 Sol and Luna routing",
+    "longDescription": "Routes Codex development work with GPT-6.1 Sol coordination, deterministic risk gates, GPT-6 Luna implementation, and independent review.",
     "developerName": "Luan de Melo",
     "category": "Developer Tools",
     "capabilities": [

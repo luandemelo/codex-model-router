@@ -82,18 +82,18 @@
     {"id": "marketplace_publish", "target_kind": "marketplace_plugin", "target_required": true}
   ],
   "valid_controller": {
-    "schema_version": "cmr-controller-result-v1",
+    "schema_version": "cmr-controller-result-v4",
     "fact_ids": ["clear_isolated_low_risk"],
     "uncertainty_ids": [],
     "action_intents": []
   },
   "valid_preflight": {
-    "accept": {"schema_version": "cmr-preflight-result-v1", "outcome": "accept"},
-    "replace": {"schema_version": "cmr-preflight-result-v1", "outcome": "replace", "fact_ids": [], "uncertainty_ids": [], "action_intents": []},
-    "block": {"schema_version": "cmr-preflight-result-v1", "outcome": "block", "blocker_ids": ["ambiguous_semantics"]}
+    "accept": {"schema_version": "cmr-preflight-result-v4", "outcome": "accept"},
+    "replace": {"schema_version": "cmr-preflight-result-v4", "outcome": "replace", "fact_ids": [], "uncertainty_ids": [], "action_intents": []},
+    "block": {"schema_version": "cmr-preflight-result-v4", "outcome": "block", "blocker_ids": ["ambiguous_semantics"]}
   },
   "valid_planner": {
-    "schema_version": "cmr-planner-result-v1",
+    "schema_version": "cmr-planner-result-v4",
     "safe_lanes": [
       {"task_id": "T-001", "reason_ids": ["clear_isolated_low_risk"]}
     ]

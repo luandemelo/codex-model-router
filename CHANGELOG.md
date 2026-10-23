@@ -2,6 +2,13 @@
 
 All notable changes to Codex Model Router are documented here.
 
+## [0.9.0] - 2026-10-23
+
+- Published the locally validated 0.8.0 routing matrix: GPT-6.1 Sol/medium coordinates, controls, diagnoses, and reviews Luna work; Luna/xhigh handles clear bounded low-risk implementation; Luna/max is limited to dense approved bounded local implementation; Sol/high handles integration and elevated risk; Sol/max handles hard gates, recurrence, canonical planning, and final review.
+- Made native collaboration mandatory whenever the host can satisfy an occurrence's exact model, effort, context, isolation, and permission requirements. Documented the narrow occurrence-scoped CLI exception, prior user notice, and distinction between host registration and visible panel confirmation.
+- Updated public documentation and packaging metadata. This distribution retains CMR v4 schemas and route evidence v5; it does not introduce a schema bump from the local 0.8.0 profile.
+- Documented the direct public upgrade from 0.5.0 and preserved sealed evidence and historical package references. Profiles 0.6.0 through 0.8.0 were local and were not published GitHub releases. QFR remains documentary.
+
 ## [0.5.0] - 2026-09-30
 
 - Moved the current routing profile to GPT-6 Luna/medium, GPT-6 Sol/medium

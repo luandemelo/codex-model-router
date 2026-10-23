@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-preflight-result-v1.schema.json",
+  "$id": "cmr-preflight-result-v4.schema.json",
   "oneOf": [
     {
       "type": "object",
@@ -11,7 +11,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-result-v1"
+          "const": "cmr-preflight-result-v4"
         },
         "outcome": {
           "const": "accept"
@@ -30,7 +30,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-result-v1"
+          "const": "cmr-preflight-result-v4"
         },
         "outcome": {
           "const": "replace"
@@ -157,7 +157,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-result-v1"
+          "const": "cmr-preflight-result-v4"
         },
         "outcome": {
           "const": "block"

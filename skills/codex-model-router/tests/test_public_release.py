@@ -61,14 +61,14 @@ def _closed_jsonl(thread_id: str, response: object, usage: object) -> str:
 
 def _planning_occurrence_record() -> dict:
     return {
-        "schema_version": "cmr-occurrence-audit-v1",
+        "schema_version": "cmr-occurrence-audit-v4",
         "phase": "planning",
         "scope_kind": "plan",
         "scope_id": "a" * 64,
         "round_index": None,
         "task_id": None,
         "response_policy": "closed_json",
-        "model": "gpt-6-astra",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "max",
         "fork_turns": "none",
         "prompt_sha256": "b" * 64,
@@ -163,7 +163,7 @@ class PublicReleaseTests(unittest.TestCase):
             "round_index": None,
             "task_id": None,
             "response_policy": "closed_json",
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "max",
             "fork_turns": "none",
             "prompt_sha256": prompt_sha256,
@@ -186,7 +186,7 @@ class PublicReleaseTests(unittest.TestCase):
             "scope_id": plan_sha256,
             "round_index": None,
             "task_id": None,
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "max",
             "prompt_sha256": prompt_sha256,
             "forbidden_thread_ids": [],
@@ -252,7 +252,7 @@ class PublicReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             request = Path(temporary) / "compile.json"
             evidence = dict(self.controllers["valid_controller"])
-            evidence["worker"] = {"model": "gpt-6-astra", "reasoning_effort": "max"}
+            evidence["worker"] = {"model": "gpt-6.1-sol", "reasoning_effort": "max"}
             _write_json(request, {"evidence": evidence, "runtime": {}})
             completed = _run_cli("compile", str(request))
         self.assertEqual(completed.returncode, 1)
@@ -295,7 +295,7 @@ class PublicReleaseTests(unittest.TestCase):
             "round_index": None,
             "task_id": "TASK-001",
             "response_policy": "closed_json",
-            "model": "gpt-6-luna",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "medium",
             "fork_turns": "none",
             "prompt_sha256": hashlib.sha256(prompt).hexdigest(),
@@ -322,7 +322,7 @@ class PublicReleaseTests(unittest.TestCase):
             "scope_id": "TASK-001",
             "round_index": None,
             "task_id": "TASK-001",
-            "model": "gpt-6-luna",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "medium",
             "prompt_sha256": metadata["prompt_sha256"],
             "forbidden_thread_ids": [],
@@ -391,7 +391,7 @@ class PublicReleaseTests(unittest.TestCase):
                 "membership",
                 ["T-001"],
                 {
-                    "schema_version": "cmr-planner-result-v1",
+                    "schema_version": "cmr-planner-result-v4",
                     "safe_lanes": [
                         {
                             "task_id": "T-002",
@@ -405,7 +405,7 @@ class PublicReleaseTests(unittest.TestCase):
                 "order",
                 ["T-001", "T-002"],
                 {
-                    "schema_version": "cmr-planner-result-v1",
+                    "schema_version": "cmr-planner-result-v4",
                     "safe_lanes": [
                         {
                             "task_id": "T-002",
@@ -422,16 +422,16 @@ class PublicReleaseTests(unittest.TestCase):
             (
                 "omission",
                 ["T-001"],
-                {"schema_version": "cmr-planner-result-v1"},
+                {"schema_version": "cmr-planner-result-v4"},
                 "missing field",
             ),
             (
                 "addition",
                 ["T-001"],
                 {
-                    "schema_version": "cmr-planner-result-v1",
+                    "schema_version": "cmr-planner-result-v4",
                     "safe_lanes": [],
-                    "selected_model": "gpt-6-astra",
+                    "selected_model": "gpt-6.1-sol",
                 },
                 "unknown field",
             ),
@@ -468,7 +468,7 @@ class PublicReleaseTests(unittest.TestCase):
             "round_index": None,
             "task_id": "TASK-001",
             "response_policy": "closed_json",
-            "model": "gpt-6-luna",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "medium",
             "fork_turns": "none",
             "prompt_sha256": hashlib.sha256(prompt).hexdigest(),
@@ -490,7 +490,7 @@ class PublicReleaseTests(unittest.TestCase):
             "scope_id": "TASK-001",
             "round_index": None,
             "task_id": "TASK-001",
-            "model": "gpt-6-luna",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "medium",
             "prompt_sha256": metadata["prompt_sha256"],
             "forbidden_thread_ids": [],
@@ -549,9 +549,9 @@ class PublicReleaseTests(unittest.TestCase):
         }
         encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         encoded = encoded.replace(
-            '"schema_version":"cmr-occurrence-audit-v1"',
-            '"schema_version":"cmr-occurrence-audit-v1",'
-            '"schema_version":"cmr-occurrence-audit-v1"',
+            '"schema_version":"cmr-occurrence-audit-v4"',
+            '"schema_version":"cmr-occurrence-audit-v4",'
+            '"schema_version":"cmr-occurrence-audit-v4"',
             1,
         )
         with tempfile.TemporaryDirectory() as temporary:
@@ -573,7 +573,7 @@ class PublicReleaseTests(unittest.TestCase):
             ),
             (
                 "effort",
-                lambda value: value.__setitem__("reasoning_effort", "xhigh"),
+                lambda value: value.__setitem__("reasoning_effort", "low"),
                 "reasoning_effort is outside the public route matrix",
             ),
             (
@@ -583,12 +583,12 @@ class PublicReleaseTests(unittest.TestCase):
             ),
             (
                 "unconfigured-model",
-                lambda value: value.__setitem__("model", "gpt-6.1-sol"),
+                lambda value: value.__setitem__("model", "gpt-6-sol"),
                 "model is outside the public route matrix",
             ),
             (
                 "unsupported-pair",
-                lambda value: value.__setitem__("reasoning_effort", "high"),
+                lambda value: value.__setitem__("reasoning_effort", "xhigh"),
                 "model/reasoning_effort is outside the public route matrix",
             ),
             (

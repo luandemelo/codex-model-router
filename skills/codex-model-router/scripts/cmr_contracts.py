@@ -551,8 +551,8 @@ def validate_controller_result(value: Any, ontologies: Ontologies) -> list[str]:
     obj, errors = _exact_object_fields(value, fields, "controller result")
     if obj is None:
         return errors
-    if obj.get("schema_version") != "cmr-controller-result-v1":
-        errors.append("controller result.schema_version must equal cmr-controller-result-v1")
+    if obj.get("schema_version") != "cmr-controller-result-v4":
+        errors.append("controller result.schema_version must equal cmr-controller-result-v4")
     errors += _validate_semantic_envelope(obj, ontologies, "controller result")
     return sorted(set(errors))
 
@@ -578,8 +578,8 @@ def validate_preflight_result(value: Any, ontologies: Ontologies) -> list[str]:
         value, fields_by_outcome[outcome], "preflight result"
     )
     assert obj is not None
-    if obj.get("schema_version") != "cmr-preflight-result-v1":
-        errors.append("preflight result.schema_version must equal cmr-preflight-result-v1")
+    if obj.get("schema_version") != "cmr-preflight-result-v4":
+        errors.append("preflight result.schema_version must equal cmr-preflight-result-v4")
     if outcome == "replace":
         errors += _validate_semantic_envelope(obj, ontologies, "preflight result")
     elif outcome == "block":
@@ -600,8 +600,8 @@ def validate_planner_result(
     )
     if obj is None:
         return errors
-    if obj.get("schema_version") != "cmr-planner-result-v1":
-        errors.append("planner result.schema_version must equal cmr-planner-result-v1")
+    if obj.get("schema_version") != "cmr-planner-result-v4":
+        errors.append("planner result.schema_version must equal cmr-planner-result-v4")
     if isinstance(task_ids, (str, bytes)) or any(
         not isinstance(task_id, str) or not task_id for task_id in task_ids
     ):
@@ -676,12 +676,12 @@ def _semantic_properties(ontologies: Ontologies) -> dict[str, Any]:
 
 def _controller_schema(ontologies: Ontologies) -> dict[str, Any]:
     properties = {
-        "schema_version": {"const": "cmr-controller-result-v1"},
+        "schema_version": {"const": "cmr-controller-result-v4"},
         **_semantic_properties(ontologies),
     }
     return {
         "$schema": JSON_SCHEMA_DIALECT,
-        "$id": "cmr-controller-result-v1.schema.json",
+        "$id": "cmr-controller-result-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": ["schema_version", "fact_ids", "uncertainty_ids", "action_intents"],
@@ -693,14 +693,14 @@ def _preflight_schema(ontologies: Ontologies) -> dict[str, Any]:
     semantic = _semantic_properties(ontologies)
     return {
         "$schema": JSON_SCHEMA_DIALECT,
-        "$id": "cmr-preflight-result-v1.schema.json",
+        "$id": "cmr-preflight-result-v4.schema.json",
         "oneOf": [
             {
                 "type": "object",
                 "additionalProperties": False,
                 "required": ["schema_version", "outcome"],
                 "properties": {
-                    "schema_version": {"const": "cmr-preflight-result-v1"},
+                    "schema_version": {"const": "cmr-preflight-result-v4"},
                     "outcome": {"const": "accept"},
                 },
             },
@@ -715,7 +715,7 @@ def _preflight_schema(ontologies: Ontologies) -> dict[str, Any]:
                     "action_intents",
                 ],
                 "properties": {
-                    "schema_version": {"const": "cmr-preflight-result-v1"},
+                    "schema_version": {"const": "cmr-preflight-result-v4"},
                     "outcome": {"const": "replace"},
                     **semantic,
                 },
@@ -725,7 +725,7 @@ def _preflight_schema(ontologies: Ontologies) -> dict[str, Any]:
                 "additionalProperties": False,
                 "required": ["schema_version", "outcome", "blocker_ids"],
                 "properties": {
-                    "schema_version": {"const": "cmr-preflight-result-v1"},
+                    "schema_version": {"const": "cmr-preflight-result-v4"},
                     "outcome": {"const": "block"},
                     "blocker_ids": {
                         "type": "array",
@@ -742,12 +742,12 @@ def _preflight_schema(ontologies: Ontologies) -> dict[str, Any]:
 def _planner_schema(ontologies: Ontologies) -> dict[str, Any]:
     return {
         "$schema": JSON_SCHEMA_DIALECT,
-        "$id": "cmr-planner-result-v1.schema.json",
+        "$id": "cmr-planner-result-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": ["schema_version", "safe_lanes"],
         "properties": {
-            "schema_version": {"const": "cmr-planner-result-v1"},
+            "schema_version": {"const": "cmr-planner-result-v4"},
             "safe_lanes": {
                 "type": "array",
                 "items": {
@@ -814,12 +814,12 @@ def _occurrence_schema() -> dict[str, Any]:
     ]
     return {
         "$schema": JSON_SCHEMA_DIALECT,
-        "$id": "cmr-occurrence-audit-v1.schema.json",
+        "$id": "cmr-occurrence-audit-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": required,
         "properties": {
-            "schema_version": {"const": "cmr-occurrence-audit-v1"},
+            "schema_version": {"const": "cmr-occurrence-audit-v4"},
             "phase": {
                 "type": "string",
                 "enum": [
@@ -850,8 +850,8 @@ def _occurrence_schema() -> dict[str, Any]:
                 "type": "string",
                 "enum": ["closed_json", "sdd_report"],
             },
-            "model": {"type": "string", "enum": ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"]},
-            "reasoning_effort": {"type": "string", "enum": ["medium", "high", "max"]},
+            "model": {"type": "string", "enum": ["gpt-6-luna", "gpt-6.1-sol"]},
+            "reasoning_effort": {"type": "string", "enum": ["medium", "high", "xhigh", "max"]},
             "fork_turns": {"const": "none"},
             "prompt_sha256": hash_value,
             "thread_policy": {"type": "string", "enum": ["fresh", "resume"]},
@@ -901,10 +901,11 @@ def _occurrence_schema() -> dict[str, Any]:
                         }
                     }
                     for model, effort in (
-                        ("gpt-6-luna", "medium"),
-                        ("gpt-6-sol", "medium"),
-                        ("gpt-6-sol", "high"),
-                        ("gpt-6-astra", "max"),
+                        ("gpt-6-luna", "xhigh"),
+                        ("gpt-6-luna", "max"),
+                        ("gpt-6.1-sol", "medium"),
+                        ("gpt-6.1-sol", "high"),
+                        ("gpt-6.1-sol", "max"),
                     )
                 ]
             }
@@ -985,7 +986,7 @@ def _accounting_schema() -> dict[str, Any]:
     }
     return {
         "$schema": JSON_SCHEMA_DIALECT,
-        "$id": "cmr-accounting-summary-v1.schema.json",
+        "$id": "cmr-accounting-summary-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": [
@@ -1005,7 +1006,7 @@ def _accounting_schema() -> dict[str, Any]:
             "instrument_failures",
         ],
         "properties": {
-            "schema_version": {"const": "cmr-accounting-summary-v1"},
+            "schema_version": {"const": "cmr-accounting-summary-v4"},
             "task_count": {"type": "integer", "minimum": 0},
             "selector_counts": {
                 "type": "object",
@@ -1104,11 +1105,11 @@ def _accounting_schema() -> dict[str, Any]:
 
 def expected_published_schemas(ontologies: Ontologies) -> dict[str, dict[str, Any]]:
     schemas = {
-        "cmr-controller-result-v1.schema.json": _controller_schema(ontologies),
-        "cmr-preflight-result-v1.schema.json": _preflight_schema(ontologies),
-        "cmr-planner-result-v1.schema.json": _planner_schema(ontologies),
-        "cmr-occurrence-audit-v1.schema.json": _occurrence_schema(),
-        "cmr-accounting-summary-v1.schema.json": _accounting_schema(),
+        "cmr-controller-result-v4.schema.json": _controller_schema(ontologies),
+        "cmr-preflight-result-v4.schema.json": _preflight_schema(ontologies),
+        "cmr-planner-result-v4.schema.json": _planner_schema(ontologies),
+        "cmr-occurrence-audit-v4.schema.json": _occurrence_schema(),
+        "cmr-accounting-summary-v4.schema.json": _accounting_schema(),
     }
     # Task-specific schema producers extend parity without moving their runtime
     # validation logic into the Task 1 semantic-wire module.

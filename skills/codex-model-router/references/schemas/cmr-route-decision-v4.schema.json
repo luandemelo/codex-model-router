@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-route-decision-v1.schema.json",
+  "$id": "cmr-route-decision-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -26,7 +26,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-route-decision-v1"
+      "const": "cmr-route-decision-v4"
     },
     "task_id": {
       "type": "string",
@@ -343,6 +343,7 @@
         "branch_final_review",
         "regression_after_declared_resolved",
         "recurring_failure",
+        "dense_approved_local_execution",
         "default_clear_isolated_work"
       ]
     },
@@ -390,7 +391,7 @@
               "const": "gpt-6-luna"
             },
             "reasoning_effort": {
-              "const": "medium"
+              "const": "xhigh"
             }
           }
         },
@@ -403,7 +404,23 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-6-sol"
+              "const": "gpt-6-luna"
+            },
+            "reasoning_effort": {
+              "const": "max"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "model",
+            "reasoning_effort"
+          ],
+          "properties": {
+            "model": {
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "medium"
@@ -419,7 +436,7 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-6-sol"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "high"
@@ -435,7 +452,7 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-6-astra"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "max"
@@ -455,7 +472,7 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-6-sol"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "medium"
@@ -471,7 +488,7 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-6-sol"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "high"
@@ -487,7 +504,7 @@
           ],
           "properties": {
             "model": {
-              "const": "gpt-6-astra"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "max"

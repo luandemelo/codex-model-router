@@ -578,12 +578,12 @@ def _safe_lane_certificate_schema(
 ) -> dict[str, Any]:
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-safe-lane-certificate-v1.schema.json",
+        "$id": "cmr-safe-lane-certificate-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": ["schema_version", "plan", "entries"],
         "properties": {
-            "schema_version": {"const": "cmr-safe-lane-certificate-v1"},
+            "schema_version": {"const": "cmr-safe-lane-certificate-v4"},
             "plan": {"$ref": "#/$defs/ArtifactRef"},
             "entries": {
                 "type": "array",
@@ -631,16 +631,16 @@ def _planning_invocation_schema() -> dict[str, Any]:
     }
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-planning-invocation-v1.schema.json",
+        "$id": "cmr-planning-invocation-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": required,
         "properties": {
-            "schema_version": {"const": "cmr-planning-invocation-v1"},
+            "schema_version": {"const": "cmr-planning-invocation-v4"},
             "phase": {"const": "planning"},
             "purpose": {"const": "canonical_planning"},
             **refs,
-            "model": {"const": "gpt-6-astra"},
+            "model": {"const": "gpt-6.1-sol"},
             "reasoning_effort": {"const": "max"},
             "fork_turns": {"const": "none"},
             "thread_id": {"type": "string", "minLength": 1},
@@ -662,7 +662,7 @@ def _safe_lane_manifest_schema(
 ) -> dict[str, Any]:
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-safe-lane-manifest-v1.schema.json",
+        "$id": "cmr-safe-lane-manifest-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": [
@@ -673,7 +673,7 @@ def _safe_lane_manifest_schema(
             "entries",
         ],
         "properties": {
-            "schema_version": {"const": "cmr-safe-lane-manifest-v1"},
+            "schema_version": {"const": "cmr-safe-lane-manifest-v4"},
             "plan": {"$ref": "#/$defs/ArtifactRef"},
             "certificate": {"$ref": "#/$defs/ArtifactRef"},
             "planning_invocation": {"$ref": "#/$defs/ArtifactRef"},
@@ -726,17 +726,17 @@ def _preflight_invocation_schema() -> dict[str, Any]:
     }
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-preflight-invocation-v1.schema.json",
+        "$id": "cmr-preflight-invocation-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": required,
         "properties": {
-            "schema_version": {"const": "cmr-preflight-invocation-v1"},
+            "schema_version": {"const": "cmr-preflight-invocation-v4"},
             "phase": {"const": "preflight"},
             "task_id": {"type": "string", "minLength": 1},
             **refs,
             "selector": {"$ref": "#/$defs/RunSelector"},
-            "model": {"const": "gpt-6-sol"},
+            "model": {"const": "gpt-6.1-sol"},
             "reasoning_effort": {"const": "medium"},
             "fork_turns": {"const": "none"},
             "thread_id": {"type": "string", "minLength": 1},
@@ -756,7 +756,7 @@ def _preflight_invocation_schema() -> dict[str, Any]:
 
 def _preflight_evidence_schema() -> dict[str, Any]:
     common = {
-        "schema_version": {"const": "cmr-preflight-evidence-v1"},
+        "schema_version": {"const": "cmr-preflight-evidence-v4"},
         "task_id": {"type": "string", "minLength": 1},
     }
     branches: list[dict[str, Any]] = []
@@ -872,7 +872,7 @@ def _preflight_evidence_schema() -> dict[str, Any]:
         )
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-preflight-evidence-v1.schema.json",
+        "$id": "cmr-preflight-evidence-v4.schema.json",
         "oneOf": branches,
         "$defs": {
             "ArtifactRef": _artifact_ref_schema(),
@@ -895,12 +895,12 @@ def _dispatch_bundle_schema() -> dict[str, Any]:
     ]
     return {
         "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
-        "$id": "cmr-dispatch-bundle-v1.schema.json",
+        "$id": "cmr-dispatch-bundle-v4.schema.json",
         "type": "object",
         "additionalProperties": False,
         "required": fields,
         "properties": {
-            "schema_version": {"const": "cmr-dispatch-bundle-v1"},
+            "schema_version": {"const": "cmr-dispatch-bundle-v4"},
             "task_id": {"type": "string", "minLength": 1},
             **{
                 field: {"$ref": "#/$defs/ArtifactRef"}
@@ -915,16 +915,16 @@ def expected_dispatch_schemas(
     ontologies: cmr_contracts.Ontologies,
 ) -> dict[str, dict[str, Any]]:
     return {
-        "cmr-safe-lane-certificate-v1.schema.json": _safe_lane_certificate_schema(
+        "cmr-safe-lane-certificate-v4.schema.json": _safe_lane_certificate_schema(
             ontologies
         ),
-        "cmr-planning-invocation-v1.schema.json": _planning_invocation_schema(),
-        "cmr-safe-lane-manifest-v1.schema.json": _safe_lane_manifest_schema(
+        "cmr-planning-invocation-v4.schema.json": _planning_invocation_schema(),
+        "cmr-safe-lane-manifest-v4.schema.json": _safe_lane_manifest_schema(
             ontologies
         ),
-        "cmr-preflight-invocation-v1.schema.json": _preflight_invocation_schema(),
-        "cmr-preflight-evidence-v1.schema.json": _preflight_evidence_schema(),
-        "cmr-dispatch-bundle-v1.schema.json": _dispatch_bundle_schema(),
+        "cmr-preflight-invocation-v4.schema.json": _preflight_invocation_schema(),
+        "cmr-preflight-evidence-v4.schema.json": _preflight_evidence_schema(),
+        "cmr-dispatch-bundle-v4.schema.json": _dispatch_bundle_schema(),
     }
 
 
@@ -1008,7 +1008,7 @@ def _certificate_errors(
     errors = _exact_fields(value, fields, "safe-lane certificate")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-safe-lane-certificate-v1":
+    if value.get("schema_version") != "cmr-safe-lane-certificate-v4":
         errors.append("safe-lane certificate schema_version is invalid")
     errors += _ref_errors(value.get("plan"), "safe-lane certificate.plan")
     entries = value.get("entries")
@@ -1051,10 +1051,10 @@ def _planning_invocation_errors(value: Any) -> list[str]:
     if not isinstance(value, Mapping):
         return errors
     constants = {
-        "schema_version": "cmr-planning-invocation-v1",
+        "schema_version": "cmr-planning-invocation-v4",
         "phase": "planning",
         "purpose": "canonical_planning",
-        "model": "gpt-6-astra",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "max",
         "fork_turns": "none",
         "exit_code": 0,
@@ -1085,7 +1085,7 @@ def _manifest_errors(
     errors = _exact_fields(value, fields, "safe-lane manifest")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-safe-lane-manifest-v1":
+    if value.get("schema_version") != "cmr-safe-lane-manifest-v4":
         errors.append("safe-lane manifest schema_version is invalid")
     for field in ("plan", "certificate", "planning_invocation"):
         errors += _ref_errors(value.get(field), f"safe-lane manifest.{field}")
@@ -1132,13 +1132,13 @@ def _decision_errors(value: Any) -> list[str]:
     errors = _exact_fields(value, _DECISION_FIELDS, "route decision")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-route-decision-v1":
+    if value.get("schema_version") != "cmr-route-decision-v4":
         errors.append("route decision.schema_version is invalid")
     if not _nonempty_string(value.get("task_id")):
         errors.append("route decision.task_id must be non-empty")
     errors += _ref_errors(value.get("brief"), "route decision.brief")
     envelope = {
-        "schema_version": "cmr-controller-result-v1",
+        "schema_version": "cmr-controller-result-v4",
         "fact_ids": value.get("fact_ids"),
         "uncertainty_ids": value.get("uncertainty_ids"),
         "action_intents": [],
@@ -1167,10 +1167,11 @@ def _decision_errors(value: Any) -> list[str]:
     elif type(recurrence.get("active")) is not bool:
         errors.append("route decision.recurrence.active must be boolean")
     allowed_routes = {
-        ("gpt-6-luna", "medium"),
-        ("gpt-6-sol", "medium"),
-        ("gpt-6-sol", "high"),
-        ("gpt-6-astra", "max"),
+        ("gpt-6-luna", "xhigh"),
+        ("gpt-6-luna", "max"),
+        ("gpt-6.1-sol", "medium"),
+        ("gpt-6.1-sol", "high"),
+        ("gpt-6.1-sol", "max"),
     }
     for field in ("worker", "review"):
         route = value.get(field)
@@ -1182,10 +1183,11 @@ def _decision_errors(value: Any) -> list[str]:
         elif (route.get("model"), route.get("reasoning_effort")) not in allowed_routes:
             errors.append(f"route decision.{field} route is invalid")
     expected_reviews = {
-        ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
-        ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
-        ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
-        ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
+        ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
+        ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+        ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
+        ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "high"),
+        ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
     }
     worker = value.get("worker")
     review = value.get("review")
@@ -1228,32 +1230,31 @@ def _decision_errors(value: Any) -> list[str]:
             in {"integration", "elevated_risk"}
         ]
         fact_set = set(facts)
-        eligible: list[str] = []
-        if "low_blast_radius" in fact_set:
-            eligible.extend(
-                fact
-                for fact in facts
-                if fact in {"audit", "judgment_required", "reconciliation"}
-            )
-        if {
-            "complex_local_execution",
-            "architecture_approved",
-        }.issubset(fact_set):
-            eligible.extend(
-                fact for fact in facts if fact == "complex_local_execution"
-            )
+        eligible = [
+            fact for fact in facts
+            if fact in {"audit", "judgment_required", "reconciliation"}
+        ]
         recurrence_active = bool(
             isinstance(recurrence, Mapping) and recurrence.get("active") is True
         )
         final_review = value.get("role") == "final_review"
+        dense_local = (
+            not final_review
+            and not eligible
+            and not value.get("uncertainty_ids")
+            and {"complex_local_execution", "architecture_approved", "low_blast_radius"}.issubset(fact_set)
+        )
+        local_judgment = "complex_local_execution" in fact_set and not dense_local
         if final_review or recurrence_active or hard:
-            expected_worker = ("gpt-6-astra", "max")
+            expected_worker = ("gpt-6.1-sol", "max")
         elif elevated:
-            expected_worker = ("gpt-6-sol", "high")
-        elif eligible:
-            expected_worker = ("gpt-6-sol", "medium")
+            expected_worker = ("gpt-6.1-sol", "high")
+        elif eligible or local_judgment:
+            expected_worker = ("gpt-6.1-sol", "medium")
+        elif dense_local:
+            expected_worker = ("gpt-6-luna", "max")
         else:
-            expected_worker = ("gpt-6-luna", "medium")
+            expected_worker = ("gpt-6-luna", "xhigh")
         if isinstance(worker, Mapping) and (
             worker.get("model"), worker.get("reasoning_effort")
         ) != expected_worker:
@@ -1287,6 +1288,10 @@ def _decision_errors(value: Any) -> list[str]:
                 expected_reason = elevated[0]
             elif eligible:
                 expected_reason = eligible[0]
+            elif local_judgment:
+                expected_reason = "complex_local_execution"
+            elif dense_local:
+                expected_reason = "dense_approved_local_execution"
             else:
                 expected_reason = "default_clear_isolated_work"
             if "audit" in facts:
@@ -1429,9 +1434,9 @@ def _preflight_invocation_errors(value: Any) -> list[str]:
     if not isinstance(value, Mapping):
         return errors
     constants = {
-        "schema_version": "cmr-preflight-invocation-v1",
+        "schema_version": "cmr-preflight-invocation-v4",
         "phase": "preflight",
-        "model": "gpt-6-sol",
+        "model": "gpt-6.1-sol",
         "reasoning_effort": "medium",
         "fork_turns": "none",
         "exit_code": 0,
@@ -1534,7 +1539,7 @@ def _preflight_evidence_errors(value: Any) -> list[str]:
     else:
         return ["preflight evidence branch is invalid"]
     errors = _exact_fields(value, fields, "preflight evidence")
-    if value.get("schema_version") != "cmr-preflight-evidence-v1":
+    if value.get("schema_version") != "cmr-preflight-evidence-v4":
         errors.append("preflight evidence.schema_version is invalid")
     if not _nonempty_string(value.get("task_id")):
         errors.append("preflight evidence.task_id must be non-empty")
@@ -1568,7 +1573,7 @@ def _bundle_shape_errors(value: Any) -> list[str]:
     errors = _exact_fields(value, fields, "dispatch bundle")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-dispatch-bundle-v1":
+    if value.get("schema_version") != "cmr-dispatch-bundle-v4":
         errors.append("dispatch bundle.schema_version is invalid")
     if not _nonempty_string(value.get("task_id")):
         errors.append("dispatch bundle.task_id must be non-empty")
@@ -1594,7 +1599,7 @@ def _control_occurrence_errors(
             "scope_kind": "plan",
             "scope_id": plan_sha256,
             "task_id": None,
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "max",
         }
     else:
@@ -1603,12 +1608,12 @@ def _control_occurrence_errors(
             "scope_kind": "task",
             "scope_id": task_id,
             "task_id": task_id,
-            "model": "gpt-6-sol",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "medium",
         }
     expected.update(
         {
-            "schema_version": "cmr-occurrence-audit-v1",
+            "schema_version": "cmr-occurrence-audit-v4",
             "round_index": None,
             "response_policy": "closed_json",
             "fork_turns": "none",
@@ -1774,7 +1779,7 @@ def materialize_safe_lane(
             raise DispatchError("safe-lane scope belongs to a different plan")
 
         certificate_value = {
-            "schema_version": "cmr-safe-lane-certificate-v1",
+            "schema_version": "cmr-safe-lane-certificate-v4",
             "plan": evidence.plan.to_dict(),
             "entries": entries,
         }
@@ -1786,7 +1791,7 @@ def materialize_safe_lane(
         occurrence = evidence.occurrence
         assert occurrence.usage is not None
         invocation_value = {
-            "schema_version": "cmr-planning-invocation-v1",
+            "schema_version": "cmr-planning-invocation-v4",
             "phase": "planning",
             "purpose": "canonical_planning",
             "plan": evidence.plan.to_dict(),
@@ -1795,7 +1800,7 @@ def materialize_safe_lane(
             "transcript": evidence.transcript.to_dict(),
             "occurrence": evidence.occurrence_ref.to_dict(),
             "certificate": certificate.to_dict(),
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "max",
             "fork_turns": "none",
             "thread_id": occurrence.thread_id,
@@ -1810,7 +1815,7 @@ def materialize_safe_lane(
             _canonical_json_bytes(invocation_value),
         )
         manifest_value = {
-            "schema_version": "cmr-safe-lane-manifest-v1",
+            "schema_version": "cmr-safe-lane-manifest-v4",
             "plan": evidence.plan.to_dict(),
             "certificate": certificate.to_dict(),
             "planning_invocation": planning_invocation.to_dict(),
@@ -1848,11 +1853,11 @@ def _parsed_control_raw(
     if phase == "planning":
         scope_kind = "plan"
         scope_id = plan_sha256 or ""
-        model, effort = "gpt-6-astra", "max"
+        model, effort = "gpt-6.1-sol", "max"
     else:
         scope_kind = "task"
         scope_id = task_id or ""
-        model, effort = "gpt-6-sol", "medium"
+        model, effort = "gpt-6.1-sol", "medium"
     expected = cmr_runtime.OccurrenceExpectation(
         phase=phase,
         scope_kind=scope_kind,
@@ -2057,7 +2062,7 @@ def _safe_lane_details(
             if not _json_type_equal(invocation.get(field), occurrence.get(field)):
                 errors.append(f"planning invocation.{field} does not bind occurrence")
         expected_result = {
-            "schema_version": "cmr-planner-result-v1",
+            "schema_version": "cmr-planner-result-v4",
             "safe_lanes": [
                 {
                     "task_id": entry["task_id"],
@@ -2135,7 +2140,7 @@ def _selector_triggers(decision: Mapping[str, Any]) -> set[str]:
         worker.get("model"),
         worker.get("reasoning_effort"),
     ) if isinstance(worker, Mapping) else (None, None)
-    if route != ("gpt-6-luna", "medium"):
+    if route != ("gpt-6-luna", "xhigh"):
         triggers.add("nondefault_worker_route")
     hard_gates = decision.get("hard_gates")
     recurrence = decision.get("recurrence")
@@ -2151,7 +2156,7 @@ def _selector_triggers(decision: Mapping[str, Any]) -> set[str]:
         for fact in facts
     ):
         triggers.add("integration_or_elevated_risk")
-    if route == ("gpt-6-sol", "medium"):
+    if route == ("gpt-6.1-sol", "medium"):
         triggers.add("scoped_substantive_eligibility")
     if decision.get("role") == "final_review" or decision.get(
         "decisive_reason_id"
@@ -2504,7 +2509,7 @@ def materialize_preflight(
             ) != 1:
                 raise DispatchError("skip has no exact safe-lane membership")
             evidence_value = {
-                "schema_version": "cmr-preflight-evidence-v1",
+                "schema_version": "cmr-preflight-evidence-v4",
                 "task_id": task_id,
                 "selector": copy.deepcopy(dict(selector)),
                 "outcome": "skipped",
@@ -2518,7 +2523,7 @@ def materialize_preflight(
             ):
                 raise DispatchError("pre-call block forbids optional inputs")
             evidence_value = {
-                "schema_version": "cmr-preflight-evidence-v1",
+                "schema_version": "cmr-preflight-evidence-v4",
                 "task_id": task_id,
                 "selector": copy.deepcopy(dict(selector)),
                 "outcome": "blocked",
@@ -2587,7 +2592,7 @@ def materialize_preflight(
             occurrence = bound_preflight.occurrence
             assert occurrence.usage is not None
             invocation_value = {
-                "schema_version": "cmr-preflight-invocation-v1",
+                "schema_version": "cmr-preflight-invocation-v4",
                 "phase": "preflight",
                 "task_id": task_id,
                 "brief": bound_preflight.brief.to_dict(),
@@ -2598,7 +2603,7 @@ def materialize_preflight(
                 "raw": bound_preflight.raw.to_dict(),
                 "transcript": bound_preflight.transcript.to_dict(),
                 "occurrence": bound_preflight.occurrence_ref.to_dict(),
-                "model": "gpt-6-sol",
+                "model": "gpt-6.1-sol",
                 "reasoning_effort": "medium",
                 "fork_turns": "none",
                 "thread_id": occurrence.thread_id,
@@ -2613,7 +2618,7 @@ def materialize_preflight(
                 _canonical_json_bytes(invocation_value),
             )
             common = {
-                "schema_version": "cmr-preflight-evidence-v1",
+                "schema_version": "cmr-preflight-evidence-v4",
                 "task_id": task_id,
                 "selector": copy.deepcopy(dict(selector)),
                 "candidate_decision": candidate_decision.to_dict(),
@@ -2717,7 +2722,7 @@ def _controller_evidence_details(
             scope_id=evidence["task_id"],
             round_index=None,
             task_id=evidence["task_id"],
-            model="gpt-6-luna",
+            model="gpt-6.1-sol",
             reasoning_effort="medium",
             prompt_sha256=brief_ref.sha256,
             forbidden_thread_ids=(),
@@ -2738,7 +2743,7 @@ def _controller_evidence_details(
         if not _occurrence_matches_parsed(occurrence, parsed):
             errors.append("controller raw events do not bind occurrence")
         expected_result = {
-            "schema_version": "cmr-controller-result-v1",
+            "schema_version": "cmr-controller-result-v4",
             "fact_ids": list(evidence["fact_ids"]),
             "uncertainty_ids": list(evidence["uncertainty_ids"]),
             "action_intents": copy.deepcopy(evidence["action_intents"]),
@@ -2958,7 +2963,7 @@ def materialize_dispatch_bundle(
     if any(not isinstance(reference, ArtifactRef) for reference in references):
         raise DispatchError("dispatch bundle requires non-null ArtifactRef inputs")
     value = {
-        "schema_version": "cmr-dispatch-bundle-v1",
+        "schema_version": "cmr-dispatch-bundle-v4",
         "task_id": task_id,
         "brief": brief.to_dict(),
         "controller_evidence": controller_evidence.to_dict(),
@@ -3038,6 +3043,71 @@ def validate_dispatch_bundle(bundle_path: Path, ledger_root: Path) -> list[str]:
     return []
 
 
+def dispatch_request(bundle_path: Path, ledger_root: Path) -> dict[str, Any]:
+    """Return native spawn arguments only after validating the current bundle.
+
+    This adapter does not spawn a worker or treat request generation as proof
+    of execution. The caller must pass every returned request argument to the
+    host and retain the host's actual model, effort, transcript, and diff.
+    """
+    bundle_path, ledger_root = Path(bundle_path), Path(ledger_root)
+    errors = validate_dispatch_bundle(bundle_path, ledger_root)
+    if errors:
+        raise DispatchError(errors)
+    descriptor = -1
+    try:
+        descriptor, root_stat = _open_root(ledger_root)
+        payload, bundle_ref, _ = _read_artifact_path(
+            descriptor, bundle_path, ledger_root
+        )
+        bundle = _strict_object(payload, "dispatch bundle")
+        brief_ref = _ref(bundle["brief"], "worker brief")
+        final_ref = _ref(bundle["final_decision"], "final decision")
+        brief_payload, _ = _read_reference(descriptor, brief_ref)
+        final_payload, _ = _read_reference(descriptor, final_ref)
+        final = _strict_object(final_payload, "final decision")
+        if final.get("status") != "ready" or final.get("blocker_ids") != []:
+            raise DispatchError("final decision is not ready for dispatch")
+        message = brief_payload.decode("utf-8")
+        if not message.strip():
+            raise DispatchError("worker brief must contain a non-empty UTF-8 task")
+        # Revalidate after reading; no stale route or changed bundle can be
+        # exchanged for the one whose brief and model arguments were bound.
+        errors = validate_dispatch_bundle(bundle_path, ledger_root)
+        if errors:
+            raise DispatchError(errors)
+        _read_reference(descriptor, bundle_ref)
+        _read_reference(descriptor, brief_ref)
+        _read_reference(descriptor, final_ref)
+        if not _root_identity_unchanged(ledger_root, root_stat):
+            raise DispatchError("ledger root identity changed during request binding")
+        return {
+            "schema_version": "cmr-dispatch-request-v1",
+            "scope": {
+                "task_id": bundle["task_id"],
+                "role": final["role"],
+                "brief": brief_ref.to_dict(),
+                "bundle": bundle_ref.to_dict(),
+                "final_decision": final_ref.to_dict(),
+                "prompt_sha256": brief_ref.sha256,
+            },
+            "request": {
+                "task_name": "cmr_" + re.sub(r"[^a-z0-9_]", "_", bundle["task_id"].lower()),
+                "message": message,
+                "model": final["worker"]["model"],
+                "reasoning_effort": final["worker"]["reasoning_effort"],
+                "fork_turns": "none",
+            },
+        }
+    except DispatchError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise DispatchError(f"dispatch request binding is invalid: {exc}") from exc
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 __all__ = [
     "ArtifactRef",
     "BoundPreflightResult",
@@ -3049,6 +3119,7 @@ __all__ = [
     "apply_preflight",
     "bind_planner_result",
     "bind_preflight_result",
+    "dispatch_request",
     "expected_dispatch_schemas",
     "materialize_dispatch_bundle",
     "materialize_preflight",

@@ -82,7 +82,7 @@ def _controller_evidence(
         scope_id=task_id,
         round_index=None,
         task_id=task_id,
-        model="gpt-6-luna",
+        model="gpt-6.1-sol",
         reasoning_effort="medium",
         prompt_sha256=brief.sha256,
         forbidden_thread_ids=(),
@@ -211,7 +211,7 @@ class SkillContractTests(unittest.TestCase):
         self.assertLess(skill_text.index(preflight_marker), skill_text.index(sequence_marker))
         required_fragments = (
             "superpowers:subagent-driven-development",
-            "before the Luna controller",
+            "before the Sol controller",
             "stop before the controller",
             "ask for explicit",
             "authorization",

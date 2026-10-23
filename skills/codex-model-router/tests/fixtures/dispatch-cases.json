@@ -17,11 +17,11 @@
   ],
   "preflight_results": {
     "accept": {
-      "schema_version": "cmr-preflight-result-v1",
+      "schema_version": "cmr-preflight-result-v4",
       "outcome": "accept"
     },
     "replace_audit": {
-      "schema_version": "cmr-preflight-result-v1",
+      "schema_version": "cmr-preflight-result-v4",
       "outcome": "replace",
       "fact_ids": [
         "audit",
@@ -31,7 +31,7 @@
       "action_intents": []
     },
     "block": {
-      "schema_version": "cmr-preflight-result-v1",
+      "schema_version": "cmr-preflight-result-v4",
       "outcome": "block",
       "blocker_ids": [
         "ambiguous_semantics"
