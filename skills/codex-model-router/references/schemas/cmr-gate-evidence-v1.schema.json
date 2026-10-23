@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-gate-evidence-v1.schema.json",
+  "$comment": "Runtime validation also binds task/source/semantic fields, checks exact gate coverage, validates UTF-8 brief bytes and non-whitespace explanations, and compares byte offsets to the brief. Structural validation does not decide whether quoted language truthfully supports a gate; independent semantic review does.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "task_phase",
+    "brief",
+    "source",
+    "claims"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-gate-evidence-v1"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_phase": {
+      "type": "string",
+      "enum": [
+        "final_review",
+        "implementation"
+      ]
+    },
+    "brief": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Claim"
+      }
+    }
+  },
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase",
+        "raw",
+        "thread_id",
+        "semantic_sha256"
+      ],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": [
+            "controller",
+            "preflight"
+          ]
+        },
+        "raw": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "thread_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semantic_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact_id",
+        "basis",
+        "start_byte",
+        "end_byte",
+        "quote",
+        "explanation"
+      ],
+      "properties": {
+        "fact_id": {
+          "type": "string",
+          "enum": [
+            "architecture",
+            "authentication",
+            "authorization",
+            "availability_or_integrity_impact",
+            "backfill",
+            "billing",
+            "concurrency",
+            "contract_coordination",
+            "critical_integrity",
+            "critical_risk",
+            "cross_module_integration",
+            "cryptography",
+            "data_integrity",
+            "destruction",
+            "distributed_consistency",
+            "elevated_risk",
+            "encryption",
+            "entitlement",
+            "finding_critical",
+            "idempotency",
+            "incident_risk",
+            "integration_tests",
+            "invoice",
+            "irreversible_effect",
+            "ledger_financial",
+            "locks",
+            "material_data_transformation",
+            "multi_module_integration",
+            "multiple_plausible_tradeoffs",
+            "payment",
+            "pii",
+            "price",
+            "public_api_structural_change",
+            "race_condition",
+            "regulated_data",
+            "rollback",
+            "schema_migration",
+            "secrets",
+            "security_risk",
+            "structural_conflict",
+            "trust_boundary",
+            "untrusted_input"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "requested_change",
+            "concrete_decision",
+            "critical_assurance"
+          ]
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

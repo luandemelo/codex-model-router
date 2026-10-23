@@ -14,7 +14,7 @@ from unittest import mock
 
 sys.dont_write_bytecode = True
 
-from support import SKILL_ROOT, load_fixture, load_module
+from support import SKILL_ROOT, load_fixture, load_module, compile_fixture_route, fixture_gate_evidence, canonical_json_bytes, write_frozen_bytes
 
 
 compiler = load_module("cmr_compiler")
@@ -160,8 +160,9 @@ class SkillContractTests(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as temporary:
                     ledger = Path(temporary).resolve()
                     evidence = _controller_evidence(scenario, ledger)
-                    decision = compiler.compile_route(
-                        evidence, scenario["runtime"], self.ontologies
+                    decision = compile_fixture_route(
+                        evidence, scenario["runtime"], self.ontologies,
+                        brief_bytes=(scenario["brief"] + "\n").encode("utf-8")
                     )
                     expected = scenario["expected"]
                     self.assertEqual(

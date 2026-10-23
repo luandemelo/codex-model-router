@@ -1,6 +1,6 @@
 # Codex Model Router defaults
 
-- Keep GPT-6.1 Sol/medium in coordination. Under the published 0.9.0 profile, delegate
+- Keep GPT-6.1 Sol/medium in coordination. Under the published 0.10.0 profile, delegate
   each clear bounded low-risk implementation unit to GPT-6 Luna/xhigh; use
   Luna/max only for dense approved bounded local logic with all three facts
   `complex_local_execution`, `architecture_approved`, and `low_blast_radius`,
@@ -11,18 +11,30 @@
 - Use Sol/medium for the controller, semantic preflight, substantive judgment
   and default task review; Sol/high for integration or elevated risk; Sol/max
   for planning, hard gates, recurrence, and independent final review.
+- Require occurrence-specific positive evidence for each hard or
+  integration/elevated-risk fact: a verifiable quote from the bound brief, the
+  exact audited source, and an explanation of the requested change, concrete
+  decision, or critical assurance. Context, negation, preserved constraints,
+  filenames, test presence, or ordinary build choices alone do not prove a
+  gate. Missing, contradictory, context-only, or invalid evidence blocks; do
+  not delete facts or silently down-route. Structural checks cannot establish
+  natural-language relevance; preflight must assess it against the full task.
 - Check exact `gpt-6-luna` and `gpt-6.1-sol` model/effort availability on the
   active host. Select the exact effort explicitly in host parameters. Keep sealed
-  0.4 through 0.8 evidence unchanged. Version 0.9 distributes the validated 0.8
-  matrix and retains CMR v4 contracts and route evidence v5; use fresh ledgers
-  for new work. Missing exact capability blocks dispatch.
+  0.4 through 0.9 evidence unchanged. Version 0.10 preserves the validated 0.8
+  matrix and native-first policy while requiring gate-evidence-v1, bundle-v5,
+  and preflight-invocation-v5 for current dispatch. Use fresh ledgers and
+  sidecars for new work. Missing exact capability blocks dispatch.
 - Invoke `$codex-model-router` before Superpowers SDD dispatch.
 - The Sol/medium controller emits only `cmr-controller-result-v4`; code binds
   the occurrence and compiles all route, review, recurrence, and lifecycle
   fields.
 - Skip only an exact current Luna/xhigh safe-lane entry; compare model and effort.
   Dense Luna/max always runs preflight. A `run` gets fresh
-  Sol/medium preflight; preflight never replaces task review.
+  Sol/medium preflight with bound candidate gate evidence; preflight never
+  replaces task review. A `replace` requires its own source-bound gate sidecar.
+  If final gate claims remain, require exactly one independent fresh Sol/medium
+  accept/block confirmation before dispatch; a block ends that replacement.
 - Use `dispatch-request` with the current bundle and ledger to generate the
   exact model/effort/fresh-brief native spawn arguments. Require validation
   before spawning. Retain actual host model/effort, transcript, generated diff,

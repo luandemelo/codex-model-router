@@ -39,6 +39,17 @@ integration, contract coordination, integration tests, untrusted input,
 security or incident risk, availability/integrity impact, critical risk, and
 data integrity. A single-module change can still be elevated.
 
+For example, changing two existing wrappers to share one original observation
+deadline couples their completion and timeout behavior and supports
+`integration_tests`/Sol-high when architecture, interfaces, and ownership are
+already approved and the task preserves production concurrency mechanisms,
+clock authority, scheduling, ownership, cancellation, and retry mechanisms.
+The mere presence of an integration-test file or unchanged code compiled by an
+integration test does not establish integration risk. A requested change or
+critical assurance involving ordering, synchronization, concurrent ownership,
+cancellation/races, or security still triggers its concrete hard gate in the
+same occurrence; this example does not lower those gates.
+
 The dense Luna/max lane requires `task_phase: "implementation"`, all three
 facts `complex_local_execution`, `architecture_approved`, and `low_blast_radius`,
 no uncertainty IDs, and none of `audit`, `judgment_required`, or `reconciliation`.
@@ -53,6 +64,33 @@ Luna/xhigh is the default eligible implementation effort. Cost, urgency, a
 prose request for max, or the presence of tests does not create dense facts or
 override a higher route. Canonical plan certification remains Sol/max, separate
 from the Sol/medium coordinator, controller, and preflight.
+
+## Gate evidence
+
+Every asserted hard-gate or integration/elevated-risk fact needs occurrence-
+specific evidence tied to the task brief and the exact audited controller or
+preflight source. Each claim identifies a requested change, concrete decision,
+or critical assurance with a verifiable brief quote and an explanation of how
+that text requires the gate. An explicit empty evidence record is required when
+no gate fact is asserted.
+
+A context mention, negation, preserved constraint, filename, test presence, or
+ordinary build choice alone does not establish risk. Missing, contradictory,
+context-only, or invalid evidence blocks the occurrence; it does not authorize
+deleting a fact or silently selecting a lower route. Structural validation can
+verify bindings, quote bytes, and coverage, but cannot prove natural-language
+relevance. Preflight must assess relevance against the full task and phase.
+
+Correct a scope or classification with a fresh brief and classification while
+preserving sealed history and route monotonicity. Initial diagnosis remains
+Sol/medium only when the same occurrence supports no stronger gate. If its
+brief supports a hard-gate or integration/elevated-risk fact, apply that higher
+precedence in the same occurrence rather than deferring the work to a later
+unit. A stronger route requires an actual requested change, concrete decision,
+or critical assurance. Real authentication, cryptography, secrets, concurrency,
+architecture, integration, recurrence, and final-review gates keep their
+existing precedence; cost or implementation convenience never moves them to
+Luna.
 
 ## Recurrence
 

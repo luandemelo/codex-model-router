@@ -90,3 +90,36 @@ def write_json(path: Path, value: Any) -> None:
         json.dumps(value, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def fixture_gate_evidence(evidence, runtime, ontologies, brief_bytes, *,
+                          source_phase="controller", source_raw=None, source_thread_id=None):
+    """Synthetic structural fixture, never evidence of live semantic judgment."""
+    compiler = load_module("cmr_compiler")
+    gates = load_module("cmr_gate_evidence")
+    context = compiler.gate_evidence_context(evidence, runtime, source_phase=source_phase,
+        source_raw=source_raw, source_thread_id=source_thread_id)
+    semantic = {field: evidence[field] for field in ("fact_ids", "uncertainty_ids", "action_intents")}
+    value = {
+        "schema_version": "cmr-gate-evidence-v1", "task_id": evidence["task_id"],
+        "task_phase": runtime["task_phase"], "brief": evidence["brief"],
+        "source": {"phase": source_phase, "raw": evidence["raw"] if source_raw is None else source_raw,
+                   "thread_id": evidence["occurrence"]["thread_id"] if source_thread_id is None else source_thread_id,
+                   "semantic_sha256": sha256(canonical_json_bytes(semantic))},
+        "claims": [{"fact_id": fact, "basis": "requested_change", "start_byte": 0,
+                    "end_byte": len(brief_bytes), "quote": brief_bytes.decode("utf-8"),
+                    "explanation": "Synthetic classification fixture; semantic applicability is independently adjudicated."}
+                   for fact in gates.required_gate_ids(evidence["fact_ids"], ontologies)],
+    }
+    return gates.bind_gate_evidence(value, context=context, brief_bytes=brief_bytes, ontologies=ontologies)
+
+
+def compile_fixture_route(evidence, runtime, ontologies, *,
+                          brief_bytes=b"Task T-002 approved implementation brief\n"):
+    compiler = load_module("cmr_compiler")
+    # Malformed-envelope tests still reach the production validator's original
+    # precedence; fixture construction must not hide that error under its own.
+    if compiler.validate_route_evidence(evidence, ontologies) or compiler.validate_runtime_input(runtime, ontologies):
+        return compiler.compile_route(evidence, runtime, ontologies, gate_evidence=None, brief_bytes=brief_bytes)
+    bound = fixture_gate_evidence(evidence, runtime, ontologies, brief_bytes)
+    return compiler.compile_route(evidence, runtime, ontologies, gate_evidence=bound, brief_bytes=brief_bytes)

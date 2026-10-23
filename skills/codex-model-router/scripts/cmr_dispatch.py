@@ -14,6 +14,7 @@ from typing import Any, Mapping, Sequence
 import cmr_compiler
 import cmr_contracts
 import cmr_runtime
+import cmr_gate_evidence
 
 sys.dont_write_bytecode = True
 
@@ -89,6 +90,16 @@ class PreflightArtifacts:
     evidence: ArtifactRef
     replacement_evidence: ArtifactRef | None
     final_decision: ArtifactRef | None
+
+
+@dataclass(frozen=True)
+class BoundGateConfirmation:
+    """Detached frozen packet; consumers reopen and re-audit every reference."""
+
+    _payload: bytes
+
+    def to_dict(self) -> dict[str, Any]:
+        return _strict_object(self._payload, "bound gate confirmation")
 
 
 def _frozen_ontologies() -> cmr_contracts.Ontologies:
@@ -690,7 +701,7 @@ def _safe_lane_manifest_schema(
     }
 
 
-def _preflight_invocation_schema() -> dict[str, Any]:
+def _historical_preflight_invocation_schema() -> dict[str, Any]:
     required = [
         "schema_version",
         "phase",
@@ -882,7 +893,7 @@ def _preflight_evidence_schema() -> dict[str, Any]:
     }
 
 
-def _dispatch_bundle_schema() -> dict[str, Any]:
+def _historical_dispatch_bundle_schema() -> dict[str, Any]:
     fields = [
         "schema_version",
         "task_id",
@@ -911,6 +922,68 @@ def _dispatch_bundle_schema() -> dict[str, Any]:
     }
 
 
+def _preflight_invocation_schema() -> dict[str, Any]:
+    schema = _historical_preflight_invocation_schema()
+    schema["$id"] = "cmr-preflight-invocation-v5.schema.json"
+    schema["properties"]["schema_version"] = {"const": "cmr-preflight-invocation-v5"}
+    index = schema["required"].index("candidate_evidence") + 1
+    schema["required"].insert(index, "candidate_gate_evidence")
+    schema["properties"]["candidate_gate_evidence"] = {"$ref": "#/$defs/ArtifactRef"}
+    return schema
+
+
+def _dispatch_bundle_schema() -> dict[str, Any]:
+    schema = _historical_dispatch_bundle_schema()
+    schema["$id"] = "cmr-dispatch-bundle-v5.schema.json"
+    schema["properties"]["schema_version"] = {"const": "cmr-dispatch-bundle-v5"}
+    for field in ("candidate_gate_evidence", "replacement_gate_evidence", "replacement_gate_confirmation"):
+        schema["required"].append(field)
+        schema["properties"][field] = {"$ref": "#/$defs/ArtifactRef"} if field == "candidate_gate_evidence" else {
+            "oneOf": [{"$ref": "#/$defs/ArtifactRef"}, {"type": "null"}]}
+    return schema
+
+
+_CONFIRMATION_PACKET_REFS = (
+    "brief", "runtime_input", "candidate_evidence", "candidate_gate_evidence",
+    "replacement_evidence", "replacement_gate_evidence", "final_decision",
+    "proposing_preflight_invocation",
+)
+_CONFIRMATION_CONTENT_REFS = _CONFIRMATION_PACKET_REFS[:-1]
+
+
+def _gate_confirmation_result_schema() -> dict[str, Any]:
+    return {
+        "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
+        "$id": "cmr-gate-confirmation-result-v1.schema.json", "type": "object",
+        "additionalProperties": False, "required": ["schema_version", "outcome"],
+        "properties": {"schema_version": {"const": "cmr-gate-confirmation-result-v1"},
+                       "outcome": {"enum": ["accept", "block"]}},
+    }
+
+
+def _gate_confirmation_schema() -> dict[str, Any]:
+    fields = ["schema_version", "packet", "prompt", "raw", "transcript", "occurrence"]
+    return {
+        "$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
+        "$id": "cmr-gate-confirmation-v1.schema.json", "type": "object",
+        "additionalProperties": False, "required": fields,
+        "properties": {
+            "schema_version": {"const": "cmr-gate-confirmation-v1"},
+            "packet": {"$ref": "#/$defs/Packet"},
+            **{field: {"$ref": "#/$defs/ArtifactRef"} for field in fields[2:]},
+        },
+        "$defs": {"ArtifactRef": _artifact_ref_schema(), "Packet": {
+            "type": "object", "additionalProperties": False,
+            "required": ["task_id", "task_phase", *_CONFIRMATION_PACKET_REFS],
+            "properties": {
+                "task_id": {"type": "string", "minLength": 1},
+                "task_phase": {"enum": ["implementation", "final_review"]},
+                **{field: {"$ref": "#/$defs/ArtifactRef"} for field in _CONFIRMATION_PACKET_REFS},
+            },
+        }},
+    }
+
+
 def expected_dispatch_schemas(
     ontologies: cmr_contracts.Ontologies,
 ) -> dict[str, dict[str, Any]]:
@@ -922,9 +995,13 @@ def expected_dispatch_schemas(
         "cmr-safe-lane-manifest-v4.schema.json": _safe_lane_manifest_schema(
             ontologies
         ),
-        "cmr-preflight-invocation-v4.schema.json": _preflight_invocation_schema(),
+        "cmr-preflight-invocation-v4.schema.json": _historical_preflight_invocation_schema(),
+        "cmr-preflight-invocation-v5.schema.json": _preflight_invocation_schema(),
         "cmr-preflight-evidence-v4.schema.json": _preflight_evidence_schema(),
-        "cmr-dispatch-bundle-v4.schema.json": _dispatch_bundle_schema(),
+        "cmr-dispatch-bundle-v4.schema.json": _historical_dispatch_bundle_schema(),
+        "cmr-dispatch-bundle-v5.schema.json": _dispatch_bundle_schema(),
+        "cmr-gate-confirmation-v1.schema.json": _gate_confirmation_schema(),
+        "cmr-gate-confirmation-result-v1.schema.json": _gate_confirmation_result_schema(),
     }
 
 
@@ -1415,6 +1492,7 @@ def _preflight_invocation_errors(value: Any) -> list[str]:
         "task_id",
         "brief",
         "candidate_evidence",
+        "candidate_gate_evidence",
         "candidate_decision",
         "selector",
         "prompt",
@@ -1434,7 +1512,7 @@ def _preflight_invocation_errors(value: Any) -> list[str]:
     if not isinstance(value, Mapping):
         return errors
     constants = {
-        "schema_version": "cmr-preflight-invocation-v4",
+        "schema_version": "cmr-preflight-invocation-v5",
         "phase": "preflight",
         "model": "gpt-6.1-sol",
         "reasoning_effort": "medium",
@@ -1450,6 +1528,7 @@ def _preflight_invocation_errors(value: Any) -> list[str]:
     for field in (
         "brief",
         "candidate_evidence",
+        "candidate_gate_evidence",
         "candidate_decision",
         "prompt",
         "raw",
@@ -1565,6 +1644,9 @@ def _bundle_shape_errors(value: Any) -> list[str]:
         "task_id",
         "brief",
         "controller_evidence",
+        "candidate_gate_evidence",
+        "replacement_gate_evidence",
+        "replacement_gate_confirmation",
         "runtime_input",
         "candidate_decision",
         "preflight_evidence",
@@ -1573,11 +1655,13 @@ def _bundle_shape_errors(value: Any) -> list[str]:
     errors = _exact_fields(value, fields, "dispatch bundle")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-dispatch-bundle-v4":
+    if value.get("schema_version") != "cmr-dispatch-bundle-v5":
         errors.append("dispatch bundle.schema_version is invalid")
     if not _nonempty_string(value.get("task_id")):
         errors.append("dispatch bundle.task_id must be non-empty")
     for field in fields - {"schema_version", "task_id"}:
+        if field in {"replacement_gate_evidence", "replacement_gate_confirmation"} and value.get(field) is None:
+            continue
         errors += _ref_errors(value.get(field), f"dispatch bundle.{field}")
     return sorted(set(errors))
 
@@ -2239,14 +2323,20 @@ def _preflight_invocation_details(
         candidate_decision_ref = _ref(
             invocation["candidate_decision"], "preflight candidate decision"
         )
+        gate_ref = _ref(invocation["candidate_gate_evidence"], "preflight candidate gate evidence")
         for reference in (
             prompt_ref,
             transcript_ref,
             brief_ref,
             candidate_evidence_ref,
             candidate_decision_ref,
+            gate_ref,
         ):
             _read_reference(root_descriptor, reference)
+        prompt_payload, _ = _read_reference(root_descriptor, prompt_ref)
+        gate_payload, _ = _read_reference(root_descriptor, gate_ref)
+        errors += cmr_compiler.validate_preflight_gate_attachment(
+            prompt_payload, prompt_ref, gate_ref, gate_payload)
         raw_payload, _ = _read_reference(root_descriptor, raw_ref)
         transcript_payload, _ = _read_reference(root_descriptor, transcript_ref)
         occurrence_payload, _ = _read_reference(root_descriptor, occurrence_ref)
@@ -2294,6 +2384,68 @@ def _preflight_invocation_details(
     except (DispatchError, OSError, ValueError, KeyError, TypeError) as exc:
         errors.append(f"preflight invocation is invalid: {exc}")
         return sorted(set(errors)), None, None
+
+
+def _bound_gate_from_reference(
+    root_descriptor: int, reference: ArtifactRef,
+    evidence: Mapping[str, Any], runtime_input: Mapping[str, Any], *,
+    source_phase: str = "controller", source_raw: Mapping[str, Any] | None = None,
+    source_thread_id: str | None = None,
+) -> cmr_gate_evidence.BoundGateEvidence:
+    payload, _ = _read_reference(root_descriptor, reference)
+    brief_payload, _ = _read_reference(root_descriptor, _ref(evidence["brief"], "gate brief"))
+    context = cmr_compiler.gate_evidence_context(evidence, runtime_input,
+        source_phase=source_phase, source_raw=source_raw, source_thread_id=source_thread_id)
+    try:
+        return cmr_gate_evidence.bind_gate_evidence(_strict_object(payload, "gate evidence"),
+            context=context, brief_bytes=brief_payload, ontologies=_frozen_ontologies())
+    except cmr_gate_evidence.GateEvidenceError as exc:
+        raise DispatchError(exc.errors, "artifact_binding_invalid") from exc
+
+
+def _bound_preflight_from_invocation(
+    root_descriptor: int, invocation: Mapping[str, Any], result: Mapping[str, Any],
+) -> BoundPreflightResult:
+    from dataclasses import replace
+    references = {field: _ref(invocation[field], f"preflight {field}") for field in (
+        "brief", "candidate_evidence", "candidate_gate_evidence", "candidate_decision",
+        "prompt", "raw", "transcript", "occurrence")}
+    occurrence_payload, _ = _read_reference(root_descriptor, references["occurrence"])
+    occurrence = cmr_runtime.OccurrenceAudit.from_record(_strict_object(occurrence_payload, "preflight occurrence"))
+    occurrence = replace(occurrence, raw_object=copy.deepcopy(dict(result)))
+    prompt_payload, _ = _read_reference(root_descriptor, references["prompt"])
+    gate_payload, _ = _read_reference(root_descriptor, references["candidate_gate_evidence"])
+    return bind_preflight_result(result, task_id=invocation["task_id"],
+        brief=references["brief"], candidate_evidence=references["candidate_evidence"],
+        candidate_gate_evidence=references["candidate_gate_evidence"],
+        candidate_decision=references["candidate_decision"], selector=invocation["selector"],
+        prompt=references["prompt"], raw=references["raw"], transcript=references["transcript"],
+        occurrence_ref=references["occurrence"], occurrence=occurrence,
+        prompt_bytes=prompt_payload, candidate_gate_evidence_bytes=gate_payload)
+
+
+def _gate_directory_errors(
+    root_descriptor: int, task_id: str, *, replacement: bool,
+) -> list[str]:
+    prefix = f"tasks/{_task_component(task_id)}/gate-evidence"
+    expected = {"controller.json", "preflight.json"} if replacement else {"controller.json"}
+    try:
+        members, observed = _directory_state(root_descriptor, prefix)
+        errors = []
+        if members != expected:
+            errors.append("gate evidence directory membership is not exact")
+        if observed.st_mode & 0o222:
+            errors.append("gate evidence directory must be sealed")
+        if not _directory_state_unchanged(root_descriptor, prefix, members, observed):
+            errors.append("gate evidence scope identity changed during validation")
+        return errors
+    except OSError:
+        return ["gate evidence directory is unavailable"]
+
+
+def _canonical_gate_ref_errors(reference: ArtifactRef, task_id: str, phase: str) -> list[str]:
+    expected = f"tasks/{_task_component(task_id)}/gate-evidence/{phase}.json"
+    return [] if reference.path == expected else [f"{phase} gate evidence path is not canonical"]
 
 
 def _preflight_evidence_details(
@@ -2471,6 +2623,10 @@ def materialize_preflight(
     candidate_decision: ArtifactRef | None,
     bound_preflight: BoundPreflightResult | None,
     transition: PreflightTransition | None,
+    candidate_evidence: ArtifactRef | None,
+    runtime_input: ArtifactRef | None,
+    candidate_gate_evidence: ArtifactRef | None,
+    replacement_gate_evidence: ArtifactRef | None,
     ledger_root: Path,
 ) -> PreflightArtifacts:
     component = _task_component(task_id)
@@ -2484,11 +2640,44 @@ def materialize_preflight(
         invocation_ref: ArtifactRef | None = None
         replacement_ref: ArtifactRef | None = None
         final_ref: ArtifactRef | None = None
+        candidate_gate_bound = None
+        replacement_gate_bound = None
+        runtime_value = None
+        brief_payload = None
+        if decision != "block":
+            if not all(isinstance(reference, ArtifactRef) for reference in (
+                candidate_evidence, runtime_input, candidate_gate_evidence)):
+                raise DispatchError("preflight requires candidate, runtime, and candidate gate evidence references")
+            assert candidate_evidence is not None and runtime_input is not None and candidate_gate_evidence is not None
+            controller_errors, candidate_value, controller_thread = _controller_evidence_details(
+                root_descriptor, candidate_evidence)
+            if controller_errors or candidate_value is None:
+                raise DispatchError(controller_errors or ["candidate evidence is unavailable"])
+            runtime_payload, _ = _read_reference(root_descriptor, runtime_input)
+            runtime_value = _strict_object(runtime_payload, "runtime input")
+            candidate_gate_bound = _bound_gate_from_reference(root_descriptor,
+                candidate_gate_evidence, candidate_value, runtime_value)
+            canonical_errors = _canonical_gate_ref_errors(candidate_gate_evidence, task_id, "controller")
+            if canonical_errors:
+                raise DispatchError(canonical_errors)
+            brief_payload, _ = _read_reference(root_descriptor, _ref(candidate_value["brief"], "candidate brief"))
+            compiled_candidate = cmr_compiler.compile_route(candidate_value, runtime_value,
+                _frozen_ontologies(), gate_evidence=candidate_gate_bound, brief_bytes=brief_payload)
+            if not isinstance(candidate_decision, ArtifactRef):
+                raise DispatchError("preflight requires candidate decision reference")
+            frozen_candidate_payload, _ = _read_reference(root_descriptor, candidate_decision)
+            if not _json_type_equal(_strict_object(frozen_candidate_payload, "candidate decision"), compiled_candidate):
+                raise DispatchError("candidate decision is not the compiled route")
+        elif any(value is not None for value in (
+            candidate_evidence, runtime_input, candidate_gate_evidence, replacement_gate_evidence)):
+            raise DispatchError("pre-call block forbids gate and runtime inputs")
         if decision == "skip":
             if not isinstance(candidate_decision, ArtifactRef):
                 raise DispatchError("skip requires candidate decision ArtifactRef")
             if bound_preflight is not None or transition is not None:
                 raise DispatchError("skip forbids bound preflight and transition")
+            if replacement_gate_evidence is not None:
+                raise DispatchError("skip forbids replacement gate evidence")
             candidate_payload, _ = _read_reference(
                 root_descriptor, candidate_decision
             )
@@ -2540,6 +2729,10 @@ def materialize_preflight(
                 raise DispatchError("run preflight task_id is split")
             if bound_preflight.candidate_decision != candidate_decision:
                 raise DispatchError("run candidate decision is split")
+            if bound_preflight.candidate_evidence != candidate_evidence or bound_preflight.candidate_gate_evidence != candidate_gate_evidence:
+                raise DispatchError("run candidate evidence or gate evidence is split")
+            if bound_preflight.occurrence.thread_id == controller_thread:
+                raise DispatchError("preflight thread reused controller thread")
             if not _json_type_equal(bound_preflight.selector, selector):
                 raise DispatchError("run selector is split")
             _validate_bound_inputs(
@@ -2547,6 +2740,7 @@ def materialize_preflight(
                 [
                     bound_preflight.brief,
                     bound_preflight.candidate_evidence,
+                    bound_preflight.candidate_gate_evidence,
                     bound_preflight.candidate_decision,
                     bound_preflight.prompt,
                     bound_preflight.raw,
@@ -2572,6 +2766,26 @@ def materialize_preflight(
             candidate_errors += _decision_errors(candidate_decision_value)
             if candidate_errors:
                 raise DispatchError(candidate_errors)
+            if bound_preflight.result["outcome"] == "replace":
+                if not isinstance(replacement_gate_evidence, ArtifactRef):
+                    raise DispatchError("replace requires replacement gate evidence, including an empty artifact")
+                canonical_errors = _canonical_gate_ref_errors(replacement_gate_evidence, task_id, "preflight")
+                if canonical_errors:
+                    raise DispatchError(canonical_errors)
+                attempted_replacement = copy.deepcopy(candidate_evidence_value)
+                for field in ("fact_ids", "uncertainty_ids", "action_intents"):
+                    attempted_replacement[field] = copy.deepcopy(bound_preflight.result[field])
+                replacement_gate_bound = _bound_gate_from_reference(root_descriptor,
+                    replacement_gate_evidence, attempted_replacement, runtime_value,
+                    source_phase="preflight", source_raw=bound_preflight.raw.to_dict(),
+                    source_thread_id=bound_preflight.occurrence.thread_id)
+            elif replacement_gate_evidence is not None:
+                raise DispatchError("non-replace preflight forbids replacement gate evidence")
+            replayed = apply_preflight(candidate_evidence_value, runtime_value, bound_preflight,
+                _frozen_ontologies(), candidate_gate_evidence=candidate_gate_bound,
+                replacement_gate_evidence=replacement_gate_bound, brief_bytes=brief_payload)
+            if replayed != transition:
+                raise DispatchError("preflight transition is not the evidence-bound replay")
             if transition.outcome == "replaced":
                 if (
                     transition.replacement_evidence is None
@@ -2592,11 +2806,12 @@ def materialize_preflight(
             occurrence = bound_preflight.occurrence
             assert occurrence.usage is not None
             invocation_value = {
-                "schema_version": "cmr-preflight-invocation-v4",
+                "schema_version": "cmr-preflight-invocation-v5",
                 "phase": "preflight",
                 "task_id": task_id,
                 "brief": bound_preflight.brief.to_dict(),
                 "candidate_evidence": bound_preflight.candidate_evidence.to_dict(),
+                "candidate_gate_evidence": bound_preflight.candidate_gate_evidence.to_dict(),
                 "candidate_decision": bound_preflight.candidate_decision.to_dict(),
                 "selector": copy.deepcopy(dict(selector)),
                 "prompt": bound_preflight.prompt.to_dict(),
@@ -2681,6 +2896,12 @@ def materialize_preflight(
             _canonical_json_bytes(evidence_value),
         )
         _seal_directory(root_descriptor, prefix)
+        if decision != "block":
+            _seal_directory(root_descriptor, f"tasks/{component}/gate-evidence")
+            gate_directory_errors = _gate_directory_errors(root_descriptor, task_id,
+                replacement=replacement_gate_evidence is not None)
+            if gate_directory_errors:
+                raise DispatchError(gate_directory_errors)
         if not _root_identity_unchanged(Path(ledger_root), root_stat):
             raise DispatchError("ledger root identity changed during preflight write")
     finally:
@@ -2756,6 +2977,301 @@ def _controller_evidence_details(
         return sorted(set(errors)), None, None
 
 
+_GATE_CONFIRMATION_INSTRUCTIONS = (
+    b"CMR_GATE_CONFIRMATION_V1\n"
+    b"Independently confirm this one frozen replacement packet before worker dispatch. "
+    b"Read the complete task, runtime phase, classifications, sidecars, and final decision. "
+    b"Accept only if EVERY final hard, integration, and elevated-risk gate claim supports "
+    b"a concrete requested change, decision, or critical assurance in this occurrence. "
+    b"Context inventory, ontology boilerplate, preserved or negated work, module or file "
+    b"labels, test presence, and ordinary build choices are insufficient. "
+    b"If any gate is unsupported, any stronger gate is missing, or applicability is "
+    b"uncertain, block. Do not reclassify, propose facts, edit a route, or request another "
+    b"confirmation. Return exactly one JSON object with schema_version "
+    b"cmr-gate-confirmation-result-v1 and outcome accept or block.\n"
+)
+
+
+def validate_gate_confirmation_result(value: Any) -> list[str]:
+    errors = _exact_fields(value, {"schema_version", "outcome"}, "gate confirmation result")
+    if not isinstance(value, Mapping):
+        return errors
+    if value.get("schema_version") != "cmr-gate-confirmation-result-v1":
+        errors.append("gate confirmation result.schema_version is invalid")
+    if not isinstance(value.get("outcome"), str) or value["outcome"] not in {"accept", "block"}:
+        errors.append("gate confirmation result.outcome must be accept or block")
+    return sorted(set(errors))
+
+
+def _gate_confirmation_packet_errors(packet: Any) -> list[str]:
+    errors = _exact_fields(packet, {"task_id", "task_phase", *_CONFIRMATION_PACKET_REFS}, "gate confirmation packet")
+    if not isinstance(packet, Mapping):
+        return errors
+    if not _nonempty_string(packet.get("task_id")):
+        errors.append("gate confirmation packet.task_id must be non-empty")
+    if not isinstance(packet.get("task_phase"), str) or packet["task_phase"] not in {"implementation", "final_review"}:
+        errors.append("gate confirmation packet.task_phase is invalid")
+    for field in _CONFIRMATION_PACKET_REFS:
+        errors += _ref_errors(packet.get(field), f"gate confirmation packet.{field}")
+    return sorted(set(errors))
+
+
+def _gate_confirmation_prompt(root_descriptor: int, packet: Mapping[str, Any]) -> bytes:
+    errors = _gate_confirmation_packet_errors(packet)
+    if errors:
+        raise DispatchError(errors)
+    contents = {}
+    for field in _CONFIRMATION_PACKET_REFS:
+        payload, _ = _read_reference(root_descriptor, _ref(packet[field], field))
+        if field in _CONFIRMATION_CONTENT_REFS:
+            contents[field] = payload.decode("utf-8", errors="strict")
+    return _GATE_CONFIRMATION_INSTRUCTIONS + _canonical_json_bytes({"packet": dict(packet), "contents": contents})
+
+
+def build_gate_confirmation_prompt(packet: Mapping[str, Any], ledger_root: Path) -> bytes:
+    descriptor, root_stat = _open_root(Path(ledger_root))
+    try:
+        packet_errors = _gate_confirmation_packet_errors(packet)
+        if packet_errors:
+            raise DispatchError(packet_errors)
+        gate_prefix = f"tasks/{_task_component(packet['task_id'])}/gate-evidence"
+        gate_state = _directory_state(descriptor, gate_prefix)
+        errors, _, _ = _gate_confirmation_packet_bindings(descriptor, packet, Path(ledger_root))
+        if errors:
+            raise DispatchError(errors)
+        prompt = _gate_confirmation_prompt(descriptor, packet)
+        if not _directory_state_unchanged(descriptor, gate_prefix, *gate_state):
+            raise DispatchError("gate evidence scope identity changed during confirmation prompt binding")
+        if not _root_identity_unchanged(Path(ledger_root), root_stat):
+            raise DispatchError("ledger root identity changed during gate confirmation prompt binding")
+        return prompt
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        if isinstance(exc, DispatchError):
+            raise
+        raise DispatchError(f"gate confirmation prompt is invalid: {exc}") from exc
+    finally:
+        os.close(descriptor)
+
+
+def _gate_confirmation_packet_bindings(
+    descriptor: int, packet: Any, ledger_root: Path,
+) -> tuple[list[str], str | None, str | None]:
+    errors = _gate_confirmation_packet_errors(packet)
+    if errors:
+        return errors, None, None
+    try:
+        task_id = packet["task_id"]
+        component = _task_component(task_id)
+        references = {field: _ref(packet[field], field) for field in _CONFIRMATION_PACKET_REFS}
+        for field, filename in (("replacement_evidence", "replacement-evidence.json"),
+                                ("final_decision", "final-decision.json"),
+                                ("proposing_preflight_invocation", "invocation.json")):
+            if references[field].path != f"tasks/{component}/preflight/{filename}":
+                errors.append(f"gate confirmation packet.{field} path is not canonical")
+        errors += _canonical_gate_ref_errors(references["candidate_gate_evidence"], task_id, "controller")
+        errors += _canonical_gate_ref_errors(references["replacement_gate_evidence"], task_id, "preflight")
+        errors += _gate_directory_errors(descriptor, task_id, replacement=True)
+        payloads = {field: _read_reference(descriptor, reference)[0] for field, reference in references.items()}
+        controller_errors, candidate, controller_thread = _controller_evidence_details(descriptor, references["candidate_evidence"])
+        errors += controller_errors
+        runtime = _strict_object(payloads["runtime_input"], "confirmation runtime")
+        errors += cmr_compiler.validate_runtime_input(runtime, _frozen_ontologies())
+        if runtime.get("task_phase") != packet["task_phase"]:
+            errors.append("gate confirmation packet phase does not bind runtime")
+        preflight_errors, preflight, _, invocation, result = _preflight_evidence_details(
+            ledger_root / f"tasks/{component}/preflight/evidence.json", ledger_root)
+        errors += preflight_errors
+        if candidate is None or preflight is None or invocation is None or result is None:
+            return sorted(set(errors + ["gate confirmation requires audited source artifacts"])), controller_thread, None
+        if preflight.get("outcome") != "replaced" or result.get("outcome") != "replace":
+            errors.append("gate confirmation requires a replaced preflight")
+            return sorted(set(errors)), controller_thread, invocation.get("thread_id")
+        for field, preflight_field in (("replacement_evidence", "replacement_evidence"),
+                                       ("final_decision", "final_decision"),
+                                       ("proposing_preflight_invocation", "invocation")):
+            if not _json_type_equal(packet[field], preflight.get(preflight_field)):
+                errors.append(f"gate confirmation packet.{field} does not bind preflight")
+        for field, invocation_field in (("brief", "brief"), ("candidate_evidence", "candidate_evidence"),
+                                        ("candidate_gate_evidence", "candidate_gate_evidence")):
+            if not _json_type_equal(packet[field], invocation.get(invocation_field)):
+                errors.append(f"gate confirmation packet.{field} does not bind invocation")
+        if candidate.get("task_id") != task_id or invocation.get("task_id") != task_id:
+            errors.append("gate confirmation packet task does not bind source")
+        if not _json_type_equal(candidate.get("brief"), packet["brief"]):
+            errors.append("gate confirmation packet brief does not bind candidate")
+        if controller_thread == invocation.get("thread_id"):
+            errors.append("proposing preflight reused controller thread")
+        replacement = _strict_object(payloads["replacement_evidence"], "confirmation replacement")
+        final = _strict_object(payloads["final_decision"], "confirmation final decision")
+        candidate_gate = _bound_gate_from_reference(descriptor, references["candidate_gate_evidence"], candidate, runtime)
+        replacement_gate = _bound_gate_from_reference(descriptor, references["replacement_gate_evidence"], replacement, runtime,
+            source_phase="preflight", source_raw=invocation["raw"], source_thread_id=invocation["thread_id"])
+        bound_preflight = _bound_preflight_from_invocation(descriptor, invocation, result)
+        replayed = apply_preflight(candidate, runtime, bound_preflight, _frozen_ontologies(),
+            candidate_gate_evidence=candidate_gate, replacement_gate_evidence=replacement_gate,
+            brief_bytes=payloads["brief"])
+        if replayed.outcome != "replaced" or not _json_type_equal(replayed.final_decision, final):
+            errors.append("gate confirmation final decision is not the bound replacement")
+        if not _json_type_equal(replayed.replacement_evidence, replacement):
+            errors.append("gate confirmation replacement evidence is not the bound replacement")
+        if not cmr_gate_evidence.required_gate_ids(replacement.get("fact_ids", []), _frozen_ontologies()):
+            errors.append("replacement without final gates forbids gate confirmation")
+        return sorted(set(errors)), controller_thread, invocation.get("thread_id")
+    except (DispatchError, OSError, ValueError, KeyError, TypeError) as exc:
+        return sorted(set(errors + [f"gate confirmation packet binding is invalid: {exc}"])), None, None
+
+
+def _gate_confirmation_value_errors(
+    value: Any, *, expected_packet: Mapping[str, Any], ledger_root: Path, require_accept: bool,
+) -> tuple[list[str], Mapping[str, Any] | None]:
+    errors = _exact_fields(value, {"schema_version", "packet", "prompt", "raw", "transcript", "occurrence"}, "gate confirmation")
+    if not isinstance(value, Mapping):
+        return errors, None
+    if value.get("schema_version") != "cmr-gate-confirmation-v1":
+        errors.append("gate confirmation.schema_version is invalid")
+    errors += _gate_confirmation_packet_errors(value.get("packet"))
+    errors += _gate_confirmation_packet_errors(expected_packet)
+    for field in ("prompt", "raw", "transcript", "occurrence"):
+        errors += _ref_errors(value.get(field), f"gate confirmation.{field}")
+    if not _json_type_equal(value.get("packet"), expected_packet):
+        errors.append("gate confirmation packet does not equal the frozen dispatch packet")
+    if errors:
+        return sorted(set(errors)), None
+    descriptor = -1
+    try:
+        descriptor, root_stat = _open_root(ledger_root)
+        packet = value["packet"]
+        gate_prefix = f"tasks/{_task_component(packet['task_id'])}/gate-evidence"
+        gate_state = _directory_state(descriptor, gate_prefix)
+        packet_errors, controller_thread, proposer_thread = _gate_confirmation_packet_bindings(descriptor, packet, ledger_root)
+        errors += packet_errors
+        refs = {field: _ref(value[field], f"confirmation {field}") for field in ("prompt", "raw", "transcript", "occurrence")}
+        payloads = {field: _read_reference(descriptor, reference)[0] for field, reference in refs.items()}
+        if payloads["prompt"] != _gate_confirmation_prompt(descriptor, packet):
+            errors.append("gate confirmation prompt does not equal the deterministic frozen packet")
+        occurrence = _strict_object(payloads["occurrence"], "gate confirmation occurrence")
+        errors += _control_occurrence_errors(occurrence, phase="preflight", task_id=packet["task_id"], plan_sha256=None)
+        for field, ref_field in (("prompt_sha256", "prompt"), ("raw_sha256", "raw"), ("transcript_sha256", "transcript")):
+            if occurrence.get(field) != refs[ref_field].sha256:
+                errors.append(f"gate confirmation {field} binding is invalid")
+        if occurrence.get("thread_id") in {controller_thread, proposer_thread}:
+            errors.append("gate confirmation cannot reuse controller or proposing preflight thread")
+        parsed = _parsed_control_raw(payloads["raw"], phase="preflight", task_id=packet["task_id"],
+            plan_sha256=None, prompt_sha256=refs["prompt"].sha256,
+            cwd=occurrence.get("cwd", {}), validator=validate_gate_confirmation_result)
+        if not _occurrence_matches_parsed(occurrence, parsed):
+            errors.append("gate confirmation raw events do not bind occurrence")
+        if parsed.thread_id in {controller_thread, proposer_thread}:
+            errors.append("gate confirmation raw reused a source thread")
+        result = parsed.raw_object
+        errors += validate_gate_confirmation_result(result)
+        if require_accept and (not isinstance(result, Mapping) or result.get("outcome") != "accept"):
+            errors.append("gate confirmation blocked worker dispatch")
+        if not _directory_state_unchanged(descriptor, gate_prefix, *gate_state):
+            errors.append("gate evidence scope identity changed during confirmation audit")
+        if not _root_identity_unchanged(ledger_root, root_stat):
+            errors.append("ledger root identity changed during gate confirmation audit")
+        return sorted(set(errors)), result
+    except (DispatchError, OSError, ValueError, KeyError, TypeError) as exc:
+        return sorted(set(errors + [f"gate confirmation is invalid: {exc}"])), None
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def bind_gate_confirmation_result(
+    result: Mapping[str, Any], *, packet: Mapping[str, Any], prompt: ArtifactRef,
+    raw: ArtifactRef, transcript: ArtifactRef, occurrence_ref: ArtifactRef,
+    occurrence: cmr_runtime.OccurrenceAudit, ledger_root: Path,
+) -> BoundGateConfirmation:
+    errors = validate_gate_confirmation_result(result)
+    if not isinstance(occurrence, cmr_runtime.OccurrenceAudit):
+        raise DispatchError("gate confirmation requires an OccurrenceAudit")
+    if not _json_type_equal(occurrence.raw_object, result):
+        errors.append("gate confirmation result does not bind occurrence")
+    if not all(isinstance(reference, ArtifactRef) for reference in (prompt, raw, transcript, occurrence_ref)):
+        raise DispatchError("gate confirmation requires ArtifactRef inputs")
+    occurrence_payload = _canonical_json_bytes(occurrence.to_record())
+    if (occurrence_ref.sha256, occurrence_ref.size_bytes) != (hashlib.sha256(occurrence_payload).hexdigest(), len(occurrence_payload)):
+        errors.append("gate confirmation occurrence reference does not bind audit record")
+    value = {"schema_version": "cmr-gate-confirmation-v1", "packet": copy.deepcopy(dict(packet)),
+             "prompt": prompt.to_dict(), "raw": raw.to_dict(), "transcript": transcript.to_dict(),
+             "occurrence": occurrence_ref.to_dict()}
+    audit_errors, audited_result = _gate_confirmation_value_errors(value,
+        expected_packet=packet, ledger_root=Path(ledger_root), require_accept=False)
+    errors += audit_errors
+    if not _json_type_equal(audited_result, result):
+        errors.append("gate confirmation result does not equal audited raw result")
+    if errors:
+        raise DispatchError(errors)
+    return BoundGateConfirmation(_canonical_json_bytes(value))
+
+
+def materialize_gate_confirmation(bound_confirmation: BoundGateConfirmation, *, ledger_root: Path) -> ArtifactRef:
+    if not isinstance(bound_confirmation, BoundGateConfirmation):
+        raise DispatchError("gate confirmation requires a BoundGateConfirmation")
+    value = bound_confirmation.to_dict()
+    errors, _ = _gate_confirmation_value_errors(value, expected_packet=value.get("packet"),
+        ledger_root=Path(ledger_root), require_accept=False)
+    if errors:
+        raise DispatchError(errors)
+    task_id = value["packet"]["task_id"]
+    prefix = f"tasks/{_task_component(task_id)}/gate-confirmation"
+    descriptor, root_stat = _open_root(Path(ledger_root))
+    try:
+        reference = _exclusive_write(descriptor, f"{prefix}/evidence.json", _canonical_json_bytes(value))
+        _seal_directory(descriptor, prefix)
+        if not _root_identity_unchanged(Path(ledger_root), root_stat):
+            raise DispatchError("ledger root identity changed during confirmation write")
+    finally:
+        os.close(descriptor)
+    errors = _validate_gate_confirmation(reference, expected_packet=value["packet"], ledger_root=Path(ledger_root), require_accept=False)
+    if errors:
+        raise DispatchError(errors)
+    return reference
+
+
+def _validate_gate_confirmation(reference: ArtifactRef, *, expected_packet: Mapping[str, Any],
+                                ledger_root: Path, require_accept: bool) -> list[str]:
+    descriptor = -1
+    try:
+        if not isinstance(reference, ArtifactRef):
+            return ["gate confirmation requires an ArtifactRef"]
+        packet_errors = _gate_confirmation_packet_errors(expected_packet)
+        if packet_errors:
+            return packet_errors
+        descriptor, root_stat = _open_root(ledger_root)
+        prefix = f"tasks/{_task_component(expected_packet['task_id'])}/gate-confirmation"
+        errors = []
+        if reference.path != f"{prefix}/evidence.json":
+            errors.append("gate confirmation path is not canonical")
+        members, directory_stat = _directory_state(descriptor, prefix)
+        if members != {"evidence.json"}:
+            errors.append("gate confirmation directory membership is not exact")
+        if directory_stat.st_mode & 0o222:
+            errors.append("gate confirmation directory must be sealed")
+        payload, _ = _read_reference(descriptor, reference)
+        binding_errors, _ = _gate_confirmation_value_errors(_strict_object(payload, "gate confirmation"),
+            expected_packet=expected_packet, ledger_root=ledger_root, require_accept=require_accept)
+        errors += binding_errors
+        if not _directory_state_unchanged(descriptor, prefix, members, directory_stat):
+            errors.append("gate confirmation scope identity changed during validation")
+        _read_reference(descriptor, reference)
+        if not _root_identity_unchanged(ledger_root, root_stat):
+            errors.append("ledger root identity changed during confirmation validation")
+        return sorted(set(errors))
+    except (DispatchError, OSError, ValueError, KeyError, TypeError) as exc:
+        return [f"gate confirmation is invalid: {exc}"]
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def validate_gate_confirmation(reference: ArtifactRef, *, expected_packet: Mapping[str, Any], ledger_root: Path) -> list[str]:
+    return _validate_gate_confirmation(reference, expected_packet=expected_packet,
+        ledger_root=Path(ledger_root), require_accept=True)
+
+
 def _bundle_value_errors(
     value: Mapping[str, Any],
     ledger_root: Path,
@@ -2766,11 +3282,14 @@ def _bundle_value_errors(
     root_descriptor = -1
     try:
         root_descriptor, root_stat = _open_root(ledger_root)
+        gate_prefix = f"tasks/{_task_component(value['task_id'])}/gate-evidence"
+        gate_state = _directory_state(root_descriptor, gate_prefix)
         references = {
             field: _ref(value[field], f"dispatch bundle.{field}")
             for field in (
                 "brief",
                 "controller_evidence",
+                "candidate_gate_evidence",
                 "runtime_input",
                 "candidate_decision",
                 "preflight_evidence",
@@ -2798,9 +3317,13 @@ def _bundle_value_errors(
                 errors.append("controller evidence task_id does not bind bundle")
             if not _json_type_equal(controller.get("brief"), value.get("brief")):
                 errors.append("controller evidence brief does not bind bundle")
+            candidate_gate_bound = _bound_gate_from_reference(root_descriptor,
+                references["candidate_gate_evidence"], controller, runtime_input)
+            errors += _canonical_gate_ref_errors(references["candidate_gate_evidence"], task_id, "controller")
             try:
                 expected_candidate = cmr_compiler.compile_route(
-                    controller, runtime_input, _frozen_ontologies()
+                    controller, runtime_input, _frozen_ontologies(),
+                    gate_evidence=candidate_gate_bound, brief_bytes=payloads["brief"]
                 )
                 if not _json_type_equal(expected_candidate, candidate):
                     errors.append("candidate decision is not the compiled route")
@@ -2827,6 +3350,11 @@ def _bundle_value_errors(
         if preflight.get("task_id") != task_id:
             errors.append("preflight evidence task_id does not bind bundle")
         outcome = preflight.get("outcome")
+        errors += _gate_directory_errors(root_descriptor, task_id, replacement=outcome == "replaced")
+        if outcome != "replaced" and value.get("replacement_gate_evidence") is not None:
+            errors.append("non-replaced bundle forbids replacement gate evidence")
+        if outcome != "replaced" and value.get("replacement_gate_confirmation") is not None:
+            errors.append("non-replaced bundle forbids replacement gate confirmation")
         if outcome == "blocked":
             errors.append("blocked preflight never authorizes dispatch")
         elif outcome in {"skipped", "accepted"}:
@@ -2866,10 +3394,21 @@ def _bundle_value_errors(
                         errors.append(
                             f"replacement {field} does not bind preflight result"
                         )
+            replacement_gate_ref = _ref(value.get("replacement_gate_evidence"), "replacement gate evidence")
+            errors += _canonical_gate_ref_errors(replacement_gate_ref, task_id, "preflight")
+            if invocation is None or raw_result is None or controller is None:
+                raise DispatchError("replacement requires audited preflight and controller sources")
+            replacement_gate_bound = _bound_gate_from_reference(root_descriptor,
+                replacement_gate_ref, replacement, runtime_input, source_phase="preflight",
+                source_raw=invocation["raw"], source_thread_id=invocation["thread_id"])
+            bound_preflight = _bound_preflight_from_invocation(root_descriptor, invocation, raw_result)
             try:
-                expected_final = cmr_compiler.compile_route(
-                    replacement, runtime_input, _frozen_ontologies()
-                )
+                replayed = apply_preflight(controller, runtime_input, bound_preflight,
+                    _frozen_ontologies(), candidate_gate_evidence=candidate_gate_bound,
+                    replacement_gate_evidence=replacement_gate_bound, brief_bytes=payloads["brief"])
+                expected_final = replayed.final_decision
+                if replayed.outcome != "replaced" or expected_final is None:
+                    errors.append("replacement replay does not authorize dispatch")
                 if not _json_type_equal(expected_final, final):
                     errors.append("replacement final decision was not recompiled")
                 if controller is not None:
@@ -2887,10 +3426,32 @@ def _bundle_value_errors(
                         errors.extend(monotonic_errors)
             except cmr_compiler.CompilationError as exc:
                 errors.append(f"replacement compilation failed: {exc.blocker_id}")
+            final_gates = cmr_gate_evidence.required_gate_ids(replacement["fact_ids"], _frozen_ontologies())
+            confirmation_value = value.get("replacement_gate_confirmation")
+            if final_gates:
+                if confirmation_value is None:
+                    errors.append("gated replacement requires one independent gate confirmation")
+                else:
+                    packet = {
+                        "task_id": task_id, "task_phase": runtime_input["task_phase"],
+                        "brief": value["brief"], "runtime_input": value["runtime_input"],
+                        "candidate_evidence": value["controller_evidence"],
+                        "candidate_gate_evidence": value["candidate_gate_evidence"],
+                        "replacement_evidence": preflight["replacement_evidence"],
+                        "replacement_gate_evidence": value["replacement_gate_evidence"],
+                        "final_decision": value["final_decision"],
+                        "proposing_preflight_invocation": preflight["invocation"],
+                    }
+                    errors += validate_gate_confirmation(_ref(confirmation_value, "gate confirmation"),
+                        expected_packet=packet, ledger_root=ledger_root)
+            elif confirmation_value is not None:
+                errors.append("replacement without final gates forbids gate confirmation")
         else:
             errors.append("preflight evidence outcome cannot authorize dispatch")
 
         if invocation is not None:
+            if not _json_type_equal(invocation.get("candidate_gate_evidence"), value.get("candidate_gate_evidence")):
+                errors.append("preflight invocation candidate gate evidence is split")
             if not _json_type_equal(
                 invocation.get("brief"), value.get("brief")
             ):
@@ -2929,6 +3490,8 @@ def _bundle_value_errors(
                         for entry in manifest.get("entries", [])
                     ) != 1:
                         errors.append("dispatch task has no exact safe-lane entry")
+        if not _directory_state_unchanged(root_descriptor, gate_prefix, *gate_state):
+            errors.append("gate evidence scope identity changed during dispatch validation")
         if not _root_identity_unchanged(ledger_root, root_stat):
             errors.append("ledger root identity changed during dispatch validation")
         return sorted(set(errors))
@@ -2945,6 +3508,9 @@ def materialize_dispatch_bundle(
     task_id: str,
     brief: ArtifactRef,
     controller_evidence: ArtifactRef,
+    candidate_gate_evidence: ArtifactRef,
+    replacement_gate_evidence: ArtifactRef | None,
+    replacement_gate_confirmation: ArtifactRef | None,
     runtime_input: ArtifactRef,
     candidate_decision: ArtifactRef,
     preflight_evidence: ArtifactRef,
@@ -2955,6 +3521,7 @@ def materialize_dispatch_bundle(
     references = (
         brief,
         controller_evidence,
+        candidate_gate_evidence,
         runtime_input,
         candidate_decision,
         preflight_evidence,
@@ -2962,11 +3529,17 @@ def materialize_dispatch_bundle(
     )
     if any(not isinstance(reference, ArtifactRef) for reference in references):
         raise DispatchError("dispatch bundle requires non-null ArtifactRef inputs")
+    if any(reference is not None and not isinstance(reference, ArtifactRef)
+           for reference in (replacement_gate_evidence, replacement_gate_confirmation)):
+        raise DispatchError("optional dispatch references must be ArtifactRef or null")
     value = {
-        "schema_version": "cmr-dispatch-bundle-v4",
+        "schema_version": "cmr-dispatch-bundle-v5",
         "task_id": task_id,
         "brief": brief.to_dict(),
         "controller_evidence": controller_evidence.to_dict(),
+        "candidate_gate_evidence": candidate_gate_evidence.to_dict(),
+        "replacement_gate_evidence": replacement_gate_evidence.to_dict() if isinstance(replacement_gate_evidence, ArtifactRef) else replacement_gate_evidence,
+        "replacement_gate_confirmation": replacement_gate_confirmation.to_dict() if isinstance(replacement_gate_confirmation, ArtifactRef) else replacement_gate_confirmation,
         "runtime_input": runtime_input.to_dict(),
         "candidate_decision": candidate_decision.to_dict(),
         "preflight_evidence": preflight_evidence.to_dict(),
@@ -3110,6 +3683,7 @@ def dispatch_request(bundle_path: Path, ledger_root: Path) -> dict[str, Any]:
 
 __all__ = [
     "ArtifactRef",
+    "BoundGateConfirmation",
     "BoundPreflightResult",
     "DispatchError",
     "PlanningEvidence",
@@ -3119,13 +3693,18 @@ __all__ = [
     "apply_preflight",
     "bind_planner_result",
     "bind_preflight_result",
+    "bind_gate_confirmation_result",
+    "build_gate_confirmation_prompt",
     "dispatch_request",
     "expected_dispatch_schemas",
     "materialize_dispatch_bundle",
+    "materialize_gate_confirmation",
     "materialize_preflight",
     "materialize_safe_lane",
     "select_preflight",
     "validate_dispatch_bundle",
+    "validate_gate_confirmation",
+    "validate_gate_confirmation_result",
     "validate_preflight_evidence",
     "validate_safe_lane_manifest",
 ]

@@ -23,6 +23,8 @@ from support import (
     load_module,
     sha256,
     write_frozen_bytes,
+    fixture_gate_evidence,
+    compile_fixture_route,
 )
 
 compiler = load_module("cmr_compiler")
@@ -60,6 +62,7 @@ class DispatchTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.ledger = Path(self.temporary.name).resolve() / "ledger"
         self.ledger.mkdir()
+        self.fixture_inputs = {}
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -152,9 +155,9 @@ class DispatchTests(unittest.TestCase):
                 )
             else:
                 model, effort = "gpt-6.1-sol", "medium"
-                validator = lambda value: contracts.validate_preflight_result(
-                    value, self.ontologies
-                )
+                validator = (dispatch.validate_gate_confirmation_result
+                    if result.get("schema_version") == "cmr-gate-confirmation-result-v1"
+                    else lambda value: contracts.validate_preflight_result(value, self.ontologies))
 
         expected = runtime_module.OccurrenceExpectation(
             phase=phase,
@@ -311,11 +314,16 @@ class DispatchTests(unittest.TestCase):
         runtime_ref = self.json_artifact(
             f"tasks/{task_id}/{prefix}.runtime-input.json", runtime
         )
-        decision = compiler.compile_route(evidence, runtime, self.ontologies)
+        brief_bytes = self.read_ref_bytes(brief)
+        gate_bound = fixture_gate_evidence(evidence, runtime, self.ontologies, brief_bytes)
+        gate_bytes = canonical_json_bytes(gate_bound.to_dict())
+        gate_ref = compiler.ArtifactRef(f"tasks/{task_id}/gate-evidence/controller.json", sha256(gate_bytes), len(gate_bytes))
+        decision = compiler.compile_route(evidence, runtime, self.ontologies,
+            gate_evidence=gate_bound, brief_bytes=brief_bytes)
         decision_ref = self.json_artifact(
             f"tasks/{task_id}/{prefix}.candidate-decision.json", decision
         )
-        return {
+        inputs = {
             "brief": brief,
             "controller_result": result,
             "controller_occurrence": occurrence,
@@ -325,7 +333,41 @@ class DispatchTests(unittest.TestCase):
             "runtime_ref": runtime_ref,
             "decision": decision,
             "decision_ref": decision_ref,
+            "candidate_gate_bound": gate_bound,
+            "candidate_gate_ref": gate_ref,
+            "candidate_gate_bytes": gate_bytes,
+            "replacement_gate_bound": None,
+            "replacement_gate_ref": None,
+            "confirmation_ref": None,
         }
+        self.fixture_inputs[decision_ref.path] = inputs
+        return inputs
+
+    def ensure_candidate_gate(self, inputs):
+        reference = inputs["candidate_gate_ref"]
+        if not (self.ledger / reference.path).exists():
+            self.artifact(reference.path, inputs["candidate_gate_bytes"])
+        self.assertEqual(self.read_ref_bytes(reference), inputs["candidate_gate_bytes"])
+
+    def materialize_preflight(self, **arguments):
+        reference = arguments["candidate_decision"]
+        inputs = self.fixture_inputs.get(reference.path) if reference is not None else None
+        if inputs is not None:
+            self.ensure_candidate_gate(inputs)
+        arguments.update(
+            candidate_evidence=inputs["evidence_ref"] if inputs else None,
+            runtime_input=inputs["runtime_ref"] if inputs else None,
+            candidate_gate_evidence=inputs["candidate_gate_ref"] if inputs else None,
+            replacement_gate_evidence=inputs["replacement_gate_ref"] if inputs else None,
+        )
+        return dispatch.materialize_preflight(**arguments)
+
+    def materialize_dispatch_bundle(self, **arguments):
+        inputs = self.fixture_inputs[arguments["candidate_decision"].path]
+        arguments.update(candidate_gate_evidence=inputs["candidate_gate_ref"],
+            replacement_gate_evidence=inputs["replacement_gate_ref"],
+            replacement_gate_confirmation=inputs["confirmation_ref"])
+        return dispatch.materialize_dispatch_bundle(**arguments)
 
     def run_preflight(
         self,
@@ -336,9 +378,11 @@ class DispatchTests(unittest.TestCase):
         task_id: str = "T-001",
         prefix: str,
     ) -> tuple[Any, Any, Any]:
+        self.ensure_candidate_gate(bundle_inputs)
         prompt = self.artifact(
             f"control/{prefix}.prompt.md",
-            f"Audit {task_id} semantic routing.\n".encode("utf-8"),
+            f"Audit {task_id} semantic routing.\n".encode("utf-8") + compiler.build_preflight_gate_attachment(
+                bundle_inputs["candidate_gate_ref"], bundle_inputs["candidate_gate_bytes"]),
         )
         forbidden = (
             "thread-planning-task-3",
@@ -358,6 +402,7 @@ class DispatchTests(unittest.TestCase):
             task_id=task_id,
             brief=bundle_inputs["brief"],
             candidate_evidence=bundle_inputs["evidence_ref"],
+            candidate_gate_evidence=bundle_inputs["candidate_gate_ref"],
             candidate_decision=bundle_inputs["decision_ref"],
             selector=selector,
             prompt=prompt,
@@ -365,14 +410,29 @@ class DispatchTests(unittest.TestCase):
             transcript=transcript,
             occurrence_ref=occurrence_ref,
             occurrence=occurrence,
+            prompt_bytes=self.read_ref_bytes(prompt),
+            candidate_gate_evidence_bytes=bundle_inputs["candidate_gate_bytes"],
         )
+        if result["outcome"] == "replace":
+            replacement = copy.deepcopy(bundle_inputs["evidence"])
+            for field in ("fact_ids", "uncertainty_ids", "action_intents"):
+                replacement[field] = copy.deepcopy(result[field])
+            gate = fixture_gate_evidence(replacement, bundle_inputs["runtime"], self.ontologies,
+                self.read_ref_bytes(bundle_inputs["brief"]), source_phase="preflight",
+                source_raw=raw.to_dict(), source_thread_id=occurrence.thread_id)
+            bundle_inputs["replacement_gate_bound"] = gate
+            bundle_inputs["replacement_gate_ref"] = self.json_artifact(
+                f"tasks/{task_id}/gate-evidence/preflight.json", gate.to_dict())
         transition = dispatch.apply_preflight(
             bundle_inputs["evidence"],
             bundle_inputs["runtime"],
             bound,
             self.ontologies,
+            candidate_gate_evidence=bundle_inputs["candidate_gate_bound"],
+            replacement_gate_evidence=bundle_inputs["replacement_gate_bound"],
+            brief_bytes=self.read_ref_bytes(bundle_inputs["brief"]),
         )
-        artifacts = dispatch.materialize_preflight(
+        artifacts = self.materialize_preflight(
             task_id=task_id,
             selector=selector,
             candidate_decision=bundle_inputs["decision_ref"],
@@ -381,6 +441,10 @@ class DispatchTests(unittest.TestCase):
             ledger_root=self.ledger,
         )
         return bound, transition, artifacts
+
+    def compile(self, evidence, runtime, ontologies):
+        return compile_fixture_route(evidence, runtime, ontologies,
+            brief_bytes=self.read_ref_bytes(compiler.ArtifactRef.from_value(evidence["brief"])))
 
     def assert_ref(self, reference: Any) -> None:
         payload = self.read_ref_bytes(reference)
@@ -743,7 +807,7 @@ class DispatchTests(unittest.TestCase):
         ]
         for label, changed_evidence, changed_runtime, expected_triggers in cases:
             with self.subTest(label=label):
-                decision = compiler.compile_route(
+                decision = self.compile(
                     changed_evidence, changed_runtime, self.ontologies
                 )
                 self.assertEqual(
@@ -797,6 +861,7 @@ class DispatchTests(unittest.TestCase):
                 "task_id",
                 "brief",
                 "candidate_evidence",
+                "candidate_gate_evidence",
                 "candidate_decision",
                 "selector",
                 "prompt",
@@ -910,6 +975,10 @@ class DispatchTests(unittest.TestCase):
                 hard["runtime"],
                 dict(self.fixture["preflight_results"]["accept"]),
                 self.ontologies,
+
+                candidate_gate_evidence=hard["candidate_gate_bound"],
+                replacement_gate_evidence=None,
+                brief_bytes=self.read_ref_bytes(hard["brief"]),
             )
         self.assertEqual(captured.exception.blocker_id, "preflight_result_invalid")
 
@@ -921,7 +990,8 @@ class DispatchTests(unittest.TestCase):
             ledger_root=self.ledger,
         )
         result = self.fixture["preflight_results"]["accept"]
-        prompt = self.artifact("control/bind.prompt.md", b"Preflight bind prompt\n")
+        prompt = self.artifact("control/bind.prompt.md", b"Preflight bind prompt\n" + compiler.build_preflight_gate_attachment(
+            bundle["candidate_gate_ref"], bundle["candidate_gate_bytes"]))
         occurrence, raw, transcript, occurrence_ref = self.control_occurrence(
             phase="preflight",
             result=result,
@@ -957,7 +1027,11 @@ class DispatchTests(unittest.TestCase):
                         transcript=transcript,
                         occurrence_ref=occurrence_ref,
                         occurrence=changed,
-                    )
+
+            candidate_gate_evidence=bundle["candidate_gate_ref"],
+            prompt_bytes=self.read_ref_bytes(prompt),
+            candidate_gate_evidence_bytes=bundle["candidate_gate_bytes"],
+        )
                 self.assertEqual(captured.exception.blocker_id, expected_blocker)
 
     def test_skip_and_both_blocked_branches_have_exact_absence_rules(self) -> None:
@@ -968,7 +1042,7 @@ class DispatchTests(unittest.TestCase):
             manifest_path=self.ledger / artifacts.manifest.path,
             ledger_root=self.ledger,
         )
-        skipped = dispatch.materialize_preflight(
+        skipped = self.materialize_preflight(
             task_id="T-001",
             selector=skip_selector,
             candidate_decision=bundle["decision_ref"],
@@ -990,7 +1064,7 @@ class DispatchTests(unittest.TestCase):
             },
         )
 
-        pre_call = dispatch.materialize_preflight(
+        pre_call = self.materialize_preflight(
             task_id="T-BLOCK-PRE",
             selector={
                 "decision": "block",
@@ -1048,7 +1122,7 @@ class DispatchTests(unittest.TestCase):
                 manifest_path=self.ledger / safe.manifest.path,
                 ledger_root=self.ledger,
             )
-            preflight = dispatch.materialize_preflight(
+            preflight = self.materialize_preflight(
                 task_id="T-001",
                 selector=selector,
                 candidate_decision=bundle["decision_ref"],
@@ -1070,7 +1144,7 @@ class DispatchTests(unittest.TestCase):
                 bundle, selector, result, prefix=f"bundle-{branch}"
             )
         assert preflight.final_decision is not None
-        reference = dispatch.materialize_dispatch_bundle(
+        reference = self.materialize_dispatch_bundle(
             task_id="T-001",
             brief=bundle["brief"],
             controller_evidence=bundle["evidence_ref"],
@@ -1100,6 +1174,9 @@ class DispatchTests(unittest.TestCase):
                         "task_id",
                         "brief",
                         "controller_evidence",
+                        "candidate_gate_evidence",
+                        "replacement_gate_evidence",
+                        "replacement_gate_confirmation",
                         "runtime_input",
                         "candidate_decision",
                         "preflight_evidence",
@@ -1140,7 +1217,7 @@ class DispatchTests(unittest.TestCase):
         )
         self.assertIsNone(blocked.final_decision)
         with self.assertRaises((TypeError, ValueError, dispatch.DispatchError)):
-            dispatch.materialize_dispatch_bundle(
+            self.materialize_dispatch_bundle(
                 task_id="T-001",
                 brief=bundle["brief"],
                 controller_evidence=bundle["evidence_ref"],
@@ -1171,7 +1248,8 @@ class DispatchTests(unittest.TestCase):
         }
         prompt = self.artifact(
             f"control/{prefix}.prompt.md",
-            b"Audit the persisted replacement.\n",
+            b"Audit the persisted replacement.\n" + compiler.build_preflight_gate_attachment(
+                bundle["candidate_gate_ref"], bundle["candidate_gate_bytes"]),
         )
         occurrence, raw, transcript, occurrence_ref = self.control_occurrence(
             phase="preflight",
@@ -1194,14 +1272,25 @@ class DispatchTests(unittest.TestCase):
             transcript=transcript,
             occurrence_ref=occurrence_ref,
             occurrence=occurrence,
+
+            candidate_gate_evidence=bundle["candidate_gate_ref"],
+            prompt_bytes=self.read_ref_bytes(prompt),
+            candidate_gate_evidence_bytes=bundle["candidate_gate_bytes"],
         )
         replacement = copy.deepcopy(bundle["evidence"])
         for field in ("fact_ids", "uncertainty_ids", "action_intents"):
             replacement[field] = copy.deepcopy(result[field])
+        self.ensure_candidate_gate(bundle)
+        gate = fixture_gate_evidence(replacement, bundle["runtime"], self.ontologies,
+            self.read_ref_bytes(bundle["brief"]), source_phase="preflight",
+            source_raw=raw.to_dict(), source_thread_id=occurrence.thread_id)
+        bundle["replacement_gate_ref"] = self.json_artifact(
+            "tasks/T-001/gate-evidence/preflight.json", gate.to_dict())
+        bundle["replacement_gate_bound"] = gate
         forged = compiler.PreflightTransition(
             outcome="replaced",
             replacement_evidence=replacement,
-            final_decision=compiler.compile_route(
+            final_decision=self.compile(
                 replacement, bundle["runtime"], self.ontologies
             ),
             blocker_ids=(),
@@ -1215,11 +1304,12 @@ class DispatchTests(unittest.TestCase):
         )
         occurrence = bound.occurrence
         invocation = {
-            "schema_version": "cmr-preflight-invocation-v4",
+            "schema_version": "cmr-preflight-invocation-v5",
             "phase": "preflight",
             "task_id": "T-001",
             "brief": bound.brief.to_dict(),
             "candidate_evidence": bound.candidate_evidence.to_dict(),
+            "candidate_gate_evidence": bound.candidate_gate_evidence.to_dict(),
             "candidate_decision": bound.candidate_decision.to_dict(),
             "selector": copy.deepcopy(selector),
             "prompt": bound.prompt.to_dict(),
@@ -1259,8 +1349,9 @@ class DispatchTests(unittest.TestCase):
             },
         )
         (self.ledger / "tasks/T-001/preflight").chmod(0o555)
+        (self.ledger / "tasks/T-001/gate-evidence").chmod(0o555)
         with self.assertRaises(dispatch.DispatchError):
-            dispatch.materialize_dispatch_bundle(
+            self.materialize_dispatch_bundle(
                 task_id="T-001",
                 brief=bundle["brief"],
                 controller_evidence=bundle["evidence_ref"],
@@ -1388,7 +1479,7 @@ class DispatchTests(unittest.TestCase):
             prefix="forged-producer"
         )
         with self.assertRaises(dispatch.DispatchError):
-            dispatch.materialize_preflight(
+            self.materialize_preflight(
                 task_id="T-001",
                 selector=selector,
                 candidate_decision=bundle["decision_ref"],
@@ -1449,7 +1540,7 @@ class DispatchTests(unittest.TestCase):
                     self.ledger = Path(self.temporary.name).resolve() / "ledger"
                     self.ledger.mkdir()
                 with self.assertRaises(dispatch.DispatchError):
-                    dispatch.materialize_preflight(
+                    self.materialize_preflight(
                         task_id=task_id,
                         selector={
                             "decision": "block",
@@ -1664,7 +1755,7 @@ class DispatchTests(unittest.TestCase):
         )
         assert preflight.invocation is not None
         assert preflight.final_decision is not None
-        dispatch_ref = dispatch.materialize_dispatch_bundle(
+        dispatch_ref = self.materialize_dispatch_bundle(
             task_id=task_id,
             brief=bundle["brief"],
             controller_evidence=bundle["evidence_ref"],
@@ -1732,7 +1823,7 @@ class DispatchTests(unittest.TestCase):
                     self.assertTrue(validator(changed))
                 with self.subTest(contract=label, mutation="type", field=field):
                     changed = copy.deepcopy(value)
-                    changed[field] = None
+                    changed[field] = [] if value[field] is None else None
                     self.assertTrue(validator(changed))
             for nested_field in ("path", "sha256", "size_bytes"):
                 with self.subTest(
@@ -1839,6 +1930,10 @@ class DispatchTests(unittest.TestCase):
                 "cmr-preflight-invocation-v4.schema.json",
                 "cmr-preflight-evidence-v4.schema.json",
                 "cmr-dispatch-bundle-v4.schema.json",
+                "cmr-dispatch-bundle-v5.schema.json",
+                "cmr-preflight-invocation-v5.schema.json",
+                "cmr-gate-confirmation-v1.schema.json",
+                "cmr-gate-confirmation-result-v1.schema.json",
             },
         )
         for filename, runtime_schema in expected.items():
@@ -1866,11 +1961,13 @@ class DispatchTests(unittest.TestCase):
                     "Selector",
                     "RunSelector",
                     "SafeLaneEntry",
+                    "Packet",
                 })
 
         invocation_names = (
             "cmr-planning-invocation-v4.schema.json",
             "cmr-preflight-invocation-v4.schema.json",
+            "cmr-preflight-invocation-v5.schema.json",
         )
         for filename in invocation_names:
             schema = expected[filename]

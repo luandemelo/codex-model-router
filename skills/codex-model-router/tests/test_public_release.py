@@ -254,7 +254,8 @@ class PublicReleaseTests(unittest.TestCase):
             evidence = dict(self.controllers["valid_controller"])
             evidence["worker"] = {"model": "gpt-6.1-sol", "reasoning_effort": "max"}
             _write_json(request, {"evidence": evidence, "runtime": {}})
-            completed = _run_cli("compile", str(request))
+            request.chmod(0o444)
+            completed = _run_cli("compile", str(request), "--gate-evidence", str(request), "--brief", str(request))
         self.assertEqual(completed.returncode, 1)
         result = self._assert_json_result(completed)
         self.assertEqual(result["command"], "compile")

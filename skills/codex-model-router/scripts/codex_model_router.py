@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Mapping
@@ -23,8 +24,10 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 import cmr_compiler
+import cmr_confirmation_accounting
 import cmr_contracts
 import cmr_dispatch
+import cmr_gate_evidence
 import cmr_runtime
 import qfr_legacy
 
@@ -76,11 +79,30 @@ def _validate_controller(path: str) -> tuple[int, dict[str, Any]]:
     return (0 if not errors else 1), result
 
 
-def _compile(path: str, runtime_path: str | None = None) -> tuple[int, dict[str, Any]]:
-    request = _object(_read_json(path, "compile input"), "compile input")
+def _read_compile_json(path: str, label: str) -> dict[str, Any]:
+    """Use the ledger's frozen descriptor/readback contract for compile inputs."""
+    absolute = Path(path).absolute()
+    root = absolute.parent
+    descriptor, root_stat = cmr_dispatch._open_root(root)
+    try:
+        payload, reference, _ = cmr_dispatch._read_artifact_path(descriptor, absolute, root)
+        value = cmr_contracts.strict_json_object(payload, label)
+        cmr_dispatch._read_reference(descriptor, reference)
+        if not cmr_dispatch._root_identity_unchanged(root, root_stat):
+            raise CliError("compile input directory identity changed during readback")
+        return value
+    finally:
+        os.close(descriptor)
+
+
+def _compile(path: str, runtime_path: str | None = None, *,
+             gate_evidence_path: str | None, brief_path: str | None) -> tuple[int, dict[str, Any]]:
+    if gate_evidence_path is None or brief_path is None:
+        raise CliError("compile requires explicit --gate-evidence and --brief paths")
+    request = _object(_read_compile_json(path, "compile input"), "compile input")
     if runtime_path is not None:
         evidence = request
-        runtime = _object(_read_json(runtime_path, "runtime input"), "runtime input")
+        runtime = _object(_read_compile_json(runtime_path, "runtime input"), "runtime input")
     else:
         evidence = request.get("evidence", request.get("route_evidence"))
         runtime = request.get("runtime", request.get("runtime_input"))
@@ -88,7 +110,33 @@ def _compile(path: str, runtime_path: str | None = None) -> tuple[int, dict[str,
         raise CliError("compile input must contain evidence and runtime objects")
     ontologies = cmr_contracts.load_ontologies(SKILL_ROOT)
     try:
-        decision = cmr_compiler.compile_route(evidence, runtime, ontologies)
+        evidence = _object(evidence, "route evidence")
+        runtime = _object(runtime, "runtime input")
+        cmr_compiler._raise_first_evidence_error(evidence, ontologies)
+        runtime_errors = cmr_compiler.validate_runtime_input(runtime, ontologies)
+        if runtime_errors:
+            raise cmr_compiler.CompilationError("runtime_input_invalid", runtime_errors)
+        brief_ref = cmr_compiler.ArtifactRef.from_value(evidence.get("brief"))
+        supplied_brief = Path(brief_path).absolute()
+        brief_parts = Path(brief_ref.path).parts
+        if supplied_brief.parts[-len(brief_parts):] != brief_parts:
+            raise CliError("--brief path does not bind route evidence brief.path")
+        ledger_root = supplied_brief.parents[len(brief_parts) - 1]
+        descriptor, root_stat = cmr_dispatch._open_root(ledger_root)
+        try:
+            brief_bytes, _ = cmr_dispatch._read_reference(descriptor, brief_ref)
+            gate_bytes, _, _ = cmr_dispatch._read_artifact_path(
+                descriptor, Path(gate_evidence_path).absolute(), ledger_root)
+            gate_value = cmr_contracts.strict_json_object(gate_bytes, "gate evidence")
+            bound_gate = cmr_gate_evidence.bind_gate_evidence(gate_value,
+                context=cmr_compiler.gate_evidence_context(evidence, runtime),
+                brief_bytes=brief_bytes, ontologies=ontologies)
+            decision = cmr_compiler.compile_route(evidence, runtime, ontologies,
+                gate_evidence=bound_gate, brief_bytes=brief_bytes)
+            if not cmr_dispatch._root_identity_unchanged(ledger_root, root_stat):
+                raise CliError("ledger root identity changed during compile")
+        finally:
+            os.close(descriptor)
     except cmr_compiler.CompilationError as exc:
         result = _error_result("compile", list(exc.errors) or [str(exc)])
         result["blocker_id"] = exc.blocker_id
@@ -278,6 +326,23 @@ def _check_call_shape(path: str) -> tuple[int, dict[str, Any]]:
     return (0 if not errors else 1), {"command": "check-call-shape", "valid": not errors, "errors": errors}
 
 
+def _check_execution_call_shape(path: str, ledger_root: str) -> tuple[int, dict[str, Any]]:
+    request = _read_json(path, "execution accounting input")
+    errors = cmr_confirmation_accounting.validate_execution_accounting_input(request)
+    if errors:
+        return 1, _error_result("check-execution-call-shape", errors)
+    occurrences = [_occurrence(value, index) for index, value in enumerate(request["occurrences"])]
+    states = [_task_state(value, index) for index, value in enumerate(request["task_states"])]
+    report = cmr_confirmation_accounting.summarize_execution_accounting(
+        occurrences, states, request["semantic_results"], request["instrument_errors"],
+        plan_sha256=request["plan_sha256"], release_review=_release_review(request["release_review"]),
+        task_preflight_evidence=request["task_preflight_evidence"], ledger_root=Path(ledger_root))
+    errors = report["accounting_errors"]
+    valid = report["canonical_call_shape"] and not errors
+    return (0 if valid else 1), {"command": "check-execution-call-shape", "valid": valid,
+        "errors": errors, "report": report}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="codex_model_router.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -285,6 +350,8 @@ def _parser() -> argparse.ArgumentParser:
     compile_parser = sub.add_parser("compile")
     compile_parser.add_argument("input")
     compile_parser.add_argument("runtime", nargs="?")
+    compile_parser.add_argument("--gate-evidence")
+    compile_parser.add_argument("--brief")
     dispatch_parser = sub.add_parser("validate-dispatch")
     dispatch_parser.add_argument("bundle")
     dispatch_parser.add_argument("ledger_root", nargs="?")
@@ -297,6 +364,9 @@ def _parser() -> argparse.ArgumentParser:
     audit_parser.add_argument("metadata")
     audit_parser.add_argument("expected")
     sub.add_parser("check-call-shape").add_argument("input")
+    accounting_parser = sub.add_parser("check-execution-call-shape")
+    accounting_parser.add_argument("input")
+    accounting_parser.add_argument("ledger_root")
     return parser
 
 
@@ -317,7 +387,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "validate-controller":
             code, result = _validate_controller(args.record)
         elif args.command == "compile":
-            code, result = _compile(args.input, args.runtime)
+            code, result = _compile(args.input, args.runtime,
+                gate_evidence_path=args.gate_evidence, brief_path=args.brief)
         elif args.command == "validate-dispatch":
             code, result = _validate_dispatch(args.bundle, args.ledger_root)
         elif args.command == "dispatch-request":
@@ -328,6 +399,8 @@ def main(argv: list[str] | None = None) -> int:
             code, result = _audit_occurrence(args.raw, args.metadata, args.expected)
         elif args.command == "check-call-shape":
             code, result = _check_call_shape(args.input)
+        elif args.command == "check-execution-call-shape":
+            code, result = _check_execution_call_shape(args.input, args.ledger_root)
         else:  # pragma: no cover - argparse enforces the command choices.
             raise CliError("unknown command")
     except CliError as exc:

@@ -17,7 +17,7 @@ Host registration and visual panel confirmation are separate. Confirm visible re
 The host's actual model list and permission context determine whether a route can run. Do not substitute another model or effort when an exact pair is unavailable. Run the [host dependency preflight](../skills/codex-model-router/references/dependency-preflight.md) before creating a controller.
 
 The 0.5.0 historical profile listed `gpt-6-sol` and `gpt-6-astra`; neither
-is an active route in the current 0.9.0 package. The required current model
+is an active route in the current 0.10.0 package. The required current model
 slugs are only `gpt-6-luna` and `gpt-6.1-sol`.
 
 ## Runtime boundary

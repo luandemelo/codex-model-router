@@ -1,0 +1,54 @@
+{
+  "valid_multigate": {
+    "task_id": "task-demo-001",
+    "task_phase": "implementation",
+    "brief_text": "Implement atomic writes across two modules; preserve café access checks.",
+    "source_phase": "controller",
+    "source_thread_id": "thread-controller-demo",
+    "semantic": {
+      "fact_ids": [
+        "hard_change",
+        "integration_change",
+        "elevated_change",
+        "ordinary_choice"
+      ],
+      "uncertainty_ids": [],
+      "action_intents": []
+    },
+    "claims": [
+      {
+        "fact_id": "elevated_change",
+        "basis": "critical_assurance",
+        "quote": "preserve café access checks",
+        "explanation": "The brief identifies an access assurance."
+      },
+      {
+        "fact_id": "hard_change",
+        "basis": "requested_change",
+        "quote": "atomic writes",
+        "explanation": "The brief directly asks for atomic writes."
+      },
+      {
+        "fact_id": "integration_change",
+        "basis": "concrete_decision",
+        "quote": "across two modules",
+        "explanation": "The requested work spans two modules."
+      }
+    ]
+  },
+  "valid_empty": {
+    "task_id": "task-demo-002",
+    "task_phase": "final_review",
+    "brief_text": "Adjust the ordinary build label for the sample package.",
+    "source_phase": "preflight",
+    "source_thread_id": "thread-preflight-demo",
+    "semantic": {
+      "fact_ids": [
+        "ordinary_choice"
+      ],
+      "uncertainty_ids": [],
+      "action_intents": []
+    },
+    "claims": []
+  }
+}

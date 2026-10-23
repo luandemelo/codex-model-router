@@ -1,6 +1,6 @@
 {
   "name": "codex-model-router",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Risk-based Codex routing with GPT-6.1 Sol and GPT-6 Luna.",
   "author": {
     "name": "Luan de Melo",

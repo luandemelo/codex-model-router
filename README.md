@@ -8,7 +8,7 @@ Codex Model Router (CMR) is a deterministic Codex plugin for routing development
 
 CMR assigns clear, bounded, low-risk implementation to Luna/xhigh. Dense local implementation can use Luna/max only after architecture is approved and every published predicate is met. Sol handles diagnosis, judgment, integration, elevated risk, hard gates, recurrence, canonical planning, and final review at the effort fixed by the policy.
 
-> **Distribution status:** this repository contains the public skills-only plugin package at version `0.9.0`. Install the skill directly from the repository or test the complete plugin locally.
+> **Distribution status:** this repository contains the public skills-only plugin package at version `0.10.0`. Install the skill directly from the repository or test the complete plugin locally.
 
 ## Contents
 
@@ -101,7 +101,7 @@ flowchart TD
     D --> E{Safe-lane selector}
     E -->|Exact Luna/xhigh lane| F[Skip semantic preflight]
     E -->|Run required| G[Fresh GPT-6.1 Sol/medium preflight]
-    F --> H[Validated CMR v4 dispatch bundle]
+    F --> H[Validated CMR v5 dispatch bundle]
     G --> H
     H --> I[Native Superpowers SDD worker when capable]
     I --> J[Independent GPT-6.1 Sol/medium task review]
@@ -112,9 +112,9 @@ The control flow has six stages:
 
 1. **Host preflight:** check the actual model/effort and workflow capabilities before the Sol controller. Native collaboration is the required transport whenever capable.
 2. **Controller:** a fresh GPT-6.1 Sol/medium occurrence emits only a closed `cmr-controller-result-v4` envelope.
-3. **Binding and compilation:** runtime code binds the response to the brief, occurrence, hashes, usage, and repository context; the compiler derives risk, recurrence, worker route, review route, lifecycle, and external-action state.
-4. **Preflight selection:** only an exact current Luna/xhigh safe-lane entry can skip fresh Sol/medium semantic preflight. Luna/max always runs preflight.
-5. **Dispatch:** a complete CMR v4 dispatch bundle must validate before handoff.
+3. **Binding and compilation:** runtime code binds the response and required gate evidence to the brief and audited occurrence; the compiler derives risk, recurrence, worker route, review route, lifecycle, and external-action state.
+4. **Preflight selection:** only an exact current Luna/xhigh safe-lane entry can skip fresh Sol/medium semantic preflight. Luna/max always runs preflight, which independently checks gate evidence relevance.
+5. **Dispatch:** a complete CMR v5 dispatch bundle must validate before handoff. Nonempty replacement gate claims require independent Sol/medium confirmation before dispatch.
 6. **Execution and review:** Superpowers SDD receives the validated brief; both Luna efforts get fresh independent Sol/medium task review. Whole-branch final review remains a separate Sol/max occurrence.
 
 A CLI exception is scoped to the occurrence with a real native capability gap and requires prior user notification, including the loss of native panel registration. It preserves the exact model, effort, fresh context, isolation, permissions, skills, and dependencies. If any requirement cannot be met, stop. Registration and visible panel confirmation are separate facts.
@@ -135,11 +135,15 @@ The compiler applies the first matching rule to each bounded unit:
 
 The dense Luna/max lane requires all of these: `task_phase: "implementation"`; facts `complex_local_execution`, `architecture_approved`, and `low_blast_radius`; no uncertainty IDs; none of `audit`, `judgment_required`, or `reconciliation`; and no higher-precedence gate. `architecture_approved` means architecture and interfaces are already decided. If any condition is absent, the dense route does not apply.
 
+Sol/medium diagnosis applies only when the same occurrence supports no stronger gate. A supported hard-gate or integration/elevated-risk fact takes precedence in that occurrence; do not defer it to a later unit.
+
 The coordinator, controller, semantic preflight, and default review use Sol/medium. Canonical plan certification, hard gates, recurrence, and whole-branch final review use Sol/max. Both Luna routes use independent Sol/medium task review. There is no silent model or effort fallback when a route is unavailable.
+
+Every asserted hard-gate or integration/elevated-risk fact needs occurrence-specific evidence tied to the task brief and the exact audited source. Claims need a verifiable quote, a positive basis (requested change, concrete decision, or critical assurance), and an explanation of why the brief requires the gate. Context, negation, preserved constraints, filenames, test presence, and ordinary build choices alone do not establish risk. Missing, contradictory, context-only, or invalid evidence blocks; do not delete facts or silently down-route. Structural checks prove binding and coverage, not natural-language relevance, which preflight must assess against the full task and phase.
 
 Cost, quota, urgency, deadlines, authority, sunk cost, diff size, and social pressure never lower a compiled route. Semantic preflight adjudicates the control plane; it cannot act as worker execution or replace task review. Historical Quality-First Routing (QFR) records remain documentary and cannot authorize CMR dispatch.
 
-See [GPT-6 routing](docs/gpt6-routing.md) for the current profile and [migration guidance](docs/migration-from-quality-first-routing.md) for the public 0.5.0-to-0.9.0 upgrade. Benchmark rationale and its limits are documented in [policy basis](skills/codex-model-router/references/policy-basis.md).
+See [GPT-6 routing](docs/gpt6-routing.md) for the current profile and [migration guidance](docs/migration-from-quality-first-routing.md) for the public 0.5.0-to-0.10.0 upgrade. Benchmark rationale and its limits are documented in [policy basis](skills/codex-model-router/references/policy-basis.md).
 
 ## Core concepts
 
@@ -150,6 +154,7 @@ See [GPT-6 routing](docs/gpt6-routing.md) for the current profile and [migration
 | **Compiler** | Standard-library Python code that owns route precedence and derives the complete decision. |
 | **Safe lane** | Frozen, plan-bound evidence for a narrowly eligible Luna/xhigh task that may skip semantic preflight. |
 | **Semantic preflight** | Fresh Sol/medium control-plane adjudication that can accept, replace with a stronger route, or block. |
+| **Gate evidence** | Occurrence-bound positive evidence that connects every asserted hard or elevated-risk fact to the requested brief. |
 | **Dispatch bundle** | Complete validated handoff containing route evidence, preflight state, and the materialized worker brief. |
 | **Recurrence** | Repeated failure of the same bound defect; recurrence routes to Sol/max. |
 | **Hard gate** | A fact such as security-sensitive work, schema migration, concurrency, architecture, or final review that routes to Sol/max. |
@@ -171,9 +176,20 @@ python3 -B skills/codex-model-router/scripts/codex_model_router.py --help
 | `dispatch-request` | Materialize the exact worker request from a validated bundle and ledger. |
 | `validate-legacy` | Inspect one historical QFR decision without authorizing dispatch. |
 | `audit-occurrence` | Validate call shape, metadata binding, response policy, and usage for one occurrence. |
-| `check-call-shape` | Validate canonical serialized occurrence records or accounting input. |
+| `check-call-shape` | Validate the existing v4 core call shape; it does not include gate-confirmation accounting. |
+| `check-execution-call-shape` | Report complete accounting for core calls and packet-bound gate-confirmation attempts. |
 
-Commands read JSON or JSONL files, emit canonical JSON, return zero only for accepted input, and write rejection diagnostics to stderr. Current schemas are CMR v4 and route evidence v5; the machine-readable schemas and closed ontology vocabularies live under `skills/codex-model-router/references/`.
+Commands read JSON or JSONL files, emit canonical JSON, return zero only for accepted input, and write rejection diagnostics to stderr. Controller, route-decision, runtime-input, and route-evidence contracts remain CMR v4/v5. Current dispatch requires bundle-v5 and preflight-invocation-v5 with gate-evidence-v1; older bundle formats do not dispatch. Inspect historical CMR v4 artifacts with the retained 0.9.0 source, schemas, and package; `qfr_legacy.py` inspects QFR records only. See the machine-readable schemas and [execution contract](skills/codex-model-router/references/execution-contract.md) for the current boundary.
+
+The existing v4 call-shape check and accounting summary describe core calls only. For complete accounting, use `python -B skills/codex-model-router/scripts/codex_model_router.py check-execution-call-shape INPUT LEDGER_ROOT`. The facade binds confirmation attempts to replaced-preflight packets, partitions the full observed occurrence inventory, and counts unique immutable raw-call identities once. Known usage is summed once; aggregate usage is null if any contributing usage is missing or invalid, with incompleteness reported. A genuine `block` is one confirmation call, not a retry; extra attempts remain separate from the core-only retry count. Accounting does not authorize dispatch. See the [execution contract](skills/codex-model-router/references/execution-contract.md) for Python signatures, exact input/report schemas, and CLI response rules.
+
+For new compilation, pass both the bound gate sidecar and exact brief explicitly:
+
+```bash
+python -B skills/codex-model-router/scripts/codex_model_router.py compile INPUT [RUNTIME] --gate-evidence SIDECAR_PATH --brief BRIEF_PATH
+```
+
+Both flags are required for either CLI form. `INPUT`, optional `RUNTIME`, sidecar, and brief are read as frozen inputs without following symlinks; files with write-permission bits are rejected. The brief path binds to the exact brief reference in the evidence. Missing flags or invalid input files produce one JSON error, exit 1, and no route decision.
 
 ## Dependencies
 
@@ -259,6 +275,6 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for the full DCO and submission requirem
 
 ## Project status and license
 
-The current public package version is `0.9.0`. It distributes the validated 0.8 routing policy and native-first transport correction with CMR v4 schemas and route evidence v5. Local profile updates 0.6.0 through 0.8.0 were not published GitHub releases. Release and migration history is recorded in [CHANGELOG.md](CHANGELOG.md); preserve sealed historical evidence and use fresh plans and ledgers for new work.
+The current public package version is `0.10.0`. It preserves the validated 0.8 routing matrix and native-first transport policy while requiring occurrence-bound gate evidence for dispatch. Local profile updates 0.6.0 through 0.8.0 were not published GitHub releases; 0.9.0 was the preceding public package. Release and migration history is recorded in [CHANGELOG.md](CHANGELOG.md); preserve sealed historical evidence and use fresh plans, ledgers, and evidence for new work.
 
 Codex Model Router is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution details.
