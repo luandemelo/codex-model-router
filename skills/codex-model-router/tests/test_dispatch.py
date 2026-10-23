@@ -132,7 +132,7 @@ class DispatchTests(unittest.TestCase):
             scope_kind = "plan"
             scope_id = plan.sha256
             expected_task_id = None
-            model, effort = "gpt-6-astra", "max"
+            model, effort = "gpt-6.1-sol", "max"
             validator: Callable[[Any], list[str]] = lambda value: (
                 contracts.validate_planner_result(
                     value,
@@ -146,12 +146,12 @@ class DispatchTests(unittest.TestCase):
             scope_id = task_id
             expected_task_id = task_id
             if phase == "controller":
-                model, effort = "gpt-6-luna", "medium"
+                model, effort = "gpt-6.1-sol", "medium"
                 validator = lambda value: contracts.validate_controller_result(
                     value, self.ontologies
                 )
             else:
-                model, effort = "gpt-6-sol", "medium"
+                model, effort = "gpt-6.1-sol", "medium"
                 validator = lambda value: contracts.validate_preflight_result(
                     value, self.ontologies
                 )
@@ -228,7 +228,7 @@ class DispatchTests(unittest.TestCase):
             "control/planning.prompt.md", b"Classify exact plan safe lanes.\n"
         )
         result = {
-            "schema_version": "cmr-planner-result-v1",
+            "schema_version": "cmr-planner-result-v4",
             "safe_lanes": copy.deepcopy(self.fixture["safe_lanes"]),
         }
         occurrence, raw, transcript, occurrence_ref = self.control_occurrence(
@@ -273,7 +273,7 @@ class DispatchTests(unittest.TestCase):
                 f"Task {task_id} approved implementation brief\n".encode("utf-8"),
             )
         result = {
-            "schema_version": "cmr-controller-result-v1",
+            "schema_version": "cmr-controller-result-v4",
             "fact_ids": list(fact_ids or []),
             "uncertainty_ids": list(uncertainty_ids or []),
             "action_intents": copy.deepcopy(action_intents or []),
@@ -297,13 +297,13 @@ class DispatchTests(unittest.TestCase):
             f"tasks/{task_id}/{prefix}.controller-evidence.json", evidence
         )
         runtime = {
-            "schema_version": "cmr-runtime-input-v1",
+            "schema_version": "cmr-runtime-input-v4",
             "task_phase": "implementation",
             "current_defect_id": None,
             "failure_history": [],
             "review_scope": "task",
             "authorization_registry": {
-                "schema_version": "cmr-authorization-registry-v1",
+                "schema_version": "cmr-authorization-registry-v4",
                 "entries": [],
             },
         }
@@ -447,7 +447,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(invocation["purpose"], "canonical_planning")
         self.assertEqual(
             (invocation["model"], invocation["reasoning_effort"]),
-            ("gpt-6-astra", "max"),
+            ("gpt-6.1-sol", "max"),
         )
         self.assertEqual(invocation["certificate"], artifacts.certificate.to_dict())
         self.assertEqual(
@@ -465,7 +465,7 @@ class DispatchTests(unittest.TestCase):
         planning = self.read_ref(artifacts.planning_invocation)
         self.assertEqual(
             (planning["model"], planning["reasoning_effort"]),
-            ("gpt-6-astra", "max"),
+            ("gpt-6.1-sol", "max"),
         )
         self.assertEqual(planning["plan"]["sha256"], plan.sha256)
 
@@ -487,7 +487,7 @@ class DispatchTests(unittest.TestCase):
         preflight = self.read_ref(preflight_artifacts.invocation)
         self.assertEqual(
             (preflight["model"], preflight["reasoning_effort"]),
-            ("gpt-6-sol", "medium"),
+            ("gpt-6.1-sol", "medium"),
         )
         self.assertEqual(preflight["candidate_decision"], bundle["decision_ref"].to_dict())
 
@@ -508,7 +508,7 @@ class DispatchTests(unittest.TestCase):
             )
 
         for label, changes in {
-            "route": {"reasoning_effort": "xhigh"},
+            "route": {"reasoning_effort": "medium"},
             "phase": {"phase": "controller"},
             "thread": {"thread_id": None},
             "cwd": {"cwd": {**CONTROL_CWDS["planning"], "fresh": False}},
@@ -557,7 +557,7 @@ class DispatchTests(unittest.TestCase):
         reordered = dataclasses.replace(
             evidence,
             result={
-                "schema_version": "cmr-planner-result-v1",
+                "schema_version": "cmr-planner-result-v4",
                 "safe_lanes": list(reversed(evidence.result["safe_lanes"])),
             },
         )
@@ -602,7 +602,7 @@ class DispatchTests(unittest.TestCase):
         def malformed_manifest(root: Path, copied: Any) -> Path:
             path = root / copied.manifest.path
             path.chmod(0o644)
-            path.write_bytes(b'{"schema_version":"cmr-safe-lane-manifest-v1",')
+            path.write_bytes(b'{"schema_version":"cmr-safe-lane-manifest-v4",')
             path.chmod(0o444)
             return path
 
@@ -848,11 +848,11 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(transition.outcome, "replaced")
         self.assertEqual(
             transition.replacement_evidence["schema_version"],
-            "cmr-route-evidence-v2",
+            "cmr-route-evidence-v5",
         )
         self.assertEqual(
             transition.final_decision["worker"],
-            {"model": "gpt-6-sol", "reasoning_effort": "medium"},
+            {"model": "gpt-6.1-sol", "reasoning_effort": "medium"},
         )
         self.assertIsNotNone(artifacts.replacement_evidence)
         self.assertIsNotNone(artifacts.final_decision)
@@ -881,7 +881,7 @@ class DispatchTests(unittest.TestCase):
             ledger_root=self.ledger,
         )
         weakening = {
-            "schema_version": "cmr-preflight-result-v1",
+            "schema_version": "cmr-preflight-result-v4",
             "outcome": "replace",
             "fact_ids": [],
             "uncertainty_ids": [],
@@ -895,7 +895,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(
             transition.adjudication,
             {
-                "model": "gpt-6-astra",
+                "model": "gpt-6.1-sol",
                 "reasoning_effort": "max",
                 "fork_turns": "none",
                 "thread_policy": "fresh",
@@ -933,7 +933,7 @@ class DispatchTests(unittest.TestCase):
         )
         cases = {
             "model": ({"model": "gpt-5.6-sol"}, "occurrence_invalid"),
-            "effort": ({"reasoning_effort": "xhigh"}, "occurrence_invalid"),
+            "effort": ({"reasoning_effort": "max"}, "occurrence_invalid"),
             "fork": ({"fork_turns": "all"}, "occurrence_invalid"),
             "task": ({"task_id": "T-OTHER"}, "occurrence_invalid"),
             "prompt": ({"prompt_sha256": "e" * 64}, "artifact_binding_invalid"),
@@ -1163,7 +1163,7 @@ class DispatchTests(unittest.TestCase):
             ledger_root=self.ledger,
         )
         result = {
-            "schema_version": "cmr-preflight-result-v1",
+            "schema_version": "cmr-preflight-result-v4",
             "outcome": "replace",
             "fact_ids": [],
             "uncertainty_ids": [],
@@ -1215,7 +1215,7 @@ class DispatchTests(unittest.TestCase):
         )
         occurrence = bound.occurrence
         invocation = {
-            "schema_version": "cmr-preflight-invocation-v1",
+            "schema_version": "cmr-preflight-invocation-v4",
             "phase": "preflight",
             "task_id": "T-001",
             "brief": bound.brief.to_dict(),
@@ -1226,7 +1226,7 @@ class DispatchTests(unittest.TestCase):
             "raw": bound.raw.to_dict(),
             "transcript": bound.transcript.to_dict(),
             "occurrence": bound.occurrence_ref.to_dict(),
-            "model": "gpt-6-sol",
+            "model": "gpt-6.1-sol",
             "reasoning_effort": "medium",
             "fork_turns": "none",
             "thread_id": occurrence.thread_id,
@@ -1248,7 +1248,7 @@ class DispatchTests(unittest.TestCase):
         evidence_ref = self.json_artifact(
             "tasks/T-001/preflight/evidence.json",
             {
-                "schema_version": "cmr-preflight-evidence-v1",
+                "schema_version": "cmr-preflight-evidence-v4",
                 "task_id": "T-001",
                 "selector": copy.deepcopy(selector),
                 "outcome": "replaced",
@@ -1322,7 +1322,7 @@ class DispatchTests(unittest.TestCase):
         )
 
         immutable_top_level = {
-            "schema_version": "cmr-route-evidence-v999",
+            "schema_version": "cmr-route-evidence-v1000",
             "task_id": "T-OTHER",
             "brief": {
                 **candidate_evidence["brief"],
@@ -1584,8 +1584,8 @@ class DispatchTests(unittest.TestCase):
 
         duplicate = self.ledger / "duplicate.json"
         duplicate.write_bytes(
-            b'{"schema_version":"cmr-dispatch-bundle-v1",'
-            b'"schema_version":"cmr-dispatch-bundle-v1"}\n'
+            b'{"schema_version":"cmr-dispatch-bundle-v4",'
+            b'"schema_version":"cmr-dispatch-bundle-v4"}\n'
         )
         duplicate.chmod(0o444)
         self.assertIn(
@@ -1755,7 +1755,7 @@ class DispatchTests(unittest.TestCase):
                 "phase": "controller",
                 "purpose": "other",
                 "model": "gpt-5.6-luna",
-                "reasoning_effort": "xhigh",
+                "reasoning_effort": "medium",
                 "fork_turns": "all",
                 "exit_code": 1,
                 "external_writes": True,
@@ -1764,7 +1764,7 @@ class DispatchTests(unittest.TestCase):
                 "schema_version": "wrong",
                 "phase": "planning",
                 "model": "gpt-5.6-sol",
-                "reasoning_effort": "xhigh",
+                "reasoning_effort": "max",
                 "fork_turns": "all",
                 "exit_code": 1,
                 "external_writes": True,
@@ -1833,12 +1833,12 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(
             set(expected),
             {
-                "cmr-safe-lane-certificate-v1.schema.json",
-                "cmr-planning-invocation-v1.schema.json",
-                "cmr-safe-lane-manifest-v1.schema.json",
-                "cmr-preflight-invocation-v1.schema.json",
-                "cmr-preflight-evidence-v1.schema.json",
-                "cmr-dispatch-bundle-v1.schema.json",
+                "cmr-safe-lane-certificate-v4.schema.json",
+                "cmr-planning-invocation-v4.schema.json",
+                "cmr-safe-lane-manifest-v4.schema.json",
+                "cmr-preflight-invocation-v4.schema.json",
+                "cmr-preflight-evidence-v4.schema.json",
+                "cmr-dispatch-bundle-v4.schema.json",
             },
         )
         for filename, runtime_schema in expected.items():
@@ -1869,8 +1869,8 @@ class DispatchTests(unittest.TestCase):
                 })
 
         invocation_names = (
-            "cmr-planning-invocation-v1.schema.json",
-            "cmr-preflight-invocation-v1.schema.json",
+            "cmr-planning-invocation-v4.schema.json",
+            "cmr-preflight-invocation-v4.schema.json",
         )
         for filename in invocation_names:
             schema = expected[filename]
@@ -1883,7 +1883,7 @@ class DispatchTests(unittest.TestCase):
             self.assertEqual(cwd["properties"]["destroyed"], {"const": True})
             self.assertEqual(cwd["properties"]["read_only"], {"const": True})
 
-        selector = expected["cmr-preflight-evidence-v1.schema.json"]["$defs"][
+        selector = expected["cmr-preflight-evidence-v4.schema.json"]["$defs"][
             "Selector"
         ]
         self.assertEqual(len(selector["oneOf"]), 3)

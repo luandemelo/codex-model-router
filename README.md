@@ -4,20 +4,11 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](docs/dependencies.md)
 
-Codex Model Router (CMR) is a quality-first Codex plugin that routes
-development work between `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`. A small model
-response identifies facts and uncertainties; deterministic Python code owns
-the model, reasoning effort, review level, recurrence, lifecycle, and external
-authorization decisions.
+Codex Model Router (CMR) is a deterministic Codex plugin for routing development work between `gpt-6.1-sol` and `gpt-6-luna`. The Sol coordinator and controller classify a bounded task; validated facts and fixed compiler rules determine the worker, effort, and independent review.
 
-CMR is designed for teams that want lower model cost on bounded work without
-allowing cost, urgency, or social pressure to weaken the quality gates for
-high-risk work.
+CMR assigns clear, bounded, low-risk implementation to Luna/xhigh. Dense local implementation can use Luna/max only after architecture is approved and every published predicate is met. Sol handles diagnosis, judgment, integration, elevated risk, hard gates, recurrence, canonical planning, and final review at the effort fixed by the policy.
 
-> **Distribution status:** the skills-only plugin package is available from
-> this repository at version `0.5.0`. It is not yet listed in the universal
-> Plugins Directory. The supported path today is direct skill installation
-> from GitHub or local plugin testing.
+> **Distribution status:** this repository contains the public skills-only plugin package at version `0.9.0`. Install the skill directly from the repository or test the complete plugin locally.
 
 ## Contents
 
@@ -36,40 +27,25 @@ high-risk work.
 
 ## Why CMR exists
 
-Development tasks do not all have the same blast radius. Updating isolated
-copy, reconciling a small data set, migrating a database schema, debugging a
-race condition, and reviewing a release should not automatically receive the
-same model or reasoning budget.
+Development tasks do not all have the same blast radius. Updating isolated copy, reconciling a small data set, changing a database schema, diagnosing a race condition, and reviewing a release need different routes.
 
-Simple routing prompts are easy to override accidentally: a deadline, a cost
-request, or an optimistic description can lower the route even when the task
-contains a hard gate. CMR separates model judgment from routing authority:
+A deadline, cost request, or optimistic task description should not weaken a route. CMR separates model judgment from routing authority:
 
-- the controller reports only closed facts, uncertainties, and action intents;
-- Python validates and binds that report to fresh task evidence;
-- the compiler applies a fixed precedence order;
+- the GPT-6.1 Sol controller reports only closed facts, uncertainties, and action intents;
+- Python binds that report to fresh task evidence;
+- the compiler applies a fixed route precedence;
 - the dispatcher accepts only a complete, validated handoff;
-- task review and whole-branch final review remain independent.
+- every Luna worker receives independent GPT-6.1 Sol/medium task review, while whole-branch final review uses Sol/max.
 
-The result is an auditable route that cannot be weakened by authored prose or
-by a model selecting its own model, effort, or review level.
+The compiler, not model prose, owns model, effort, review, recurrence, lifecycle, and external-action decisions.
 
 ## When to use it
 
-Use CMR before delegating development work through Superpowers SDD when any of
-the following matters:
+Use CMR before delegating development work through Superpowers SDD when task risk, blast radius, repeated failures, architecture, security, concurrency, migrations, or release review should affect execution. CMR also records why a route was selected and keeps external actions separately authorized.
 
-- task risk or blast radius should determine model strength;
-- repeated failures must escalate instead of consuming more cheap attempts;
-- architecture, security, concurrency, migrations, or release review is in
-  scope;
-- Luna should handle isolated work at medium effort, with stronger models for review and risk;
-- external actions such as issues, pushes, pull requests, merges, deployments,
-  tags, releases, or plugin installation require separate authorization;
-- you need a machine-checkable record of why a route was selected.
+The current coordination and controller route is GPT-6.1 Sol/medium. Luna/xhigh is the default for eligible clear, bounded, low-risk implementation. Luna/max is restricted to dense implementation with approved architecture, low blast radius, no uncertainty, no audit, judgment, or reconciliation, and no higher-precedence gate.
 
-CMR is intentionally unnecessary for conversations that do not dispatch
-development work or do not need a controlled Luna/Sol/Astra routing decision.
+CMR is unnecessary for conversations that do not dispatch development work or need controlled routing.
 
 ## Quick start
 
@@ -77,142 +53,111 @@ development work or do not need a controlled Luna/Sol/Astra routing decision.
 
 You need:
 
-- a Codex app, CLI, or IDE surface with skills and subagents;
-- account access to `gpt-6-luna`, `gpt-6-sol`, and `gpt-6-astra`;
-- Superpowers with `superpowers:subagent-driven-development` (tested with
-  Superpowers 6.3.0; required skill checked with 6.4.2);
+- a Codex app, CLI, or IDE surface with skills and native collaboration;
+- access to the exact model slugs `gpt-6.1-sol` and `gpt-6-luna`, and the required efforts;
+- Superpowers with `superpowers:subagent-driven-development`;
 - Python 3.10 or newer and Git for local validation and contribution.
 
-See [Dependencies](#dependencies) for the complete boundary.
+Native collaboration is mandatory whenever it supports the occurrence's exact model, effort, fresh context, isolation, and permission requirements. A busy native slot means wait. CLI is permitted only for an occurrence-scoped, documented native capability gap, after notifying the user that the CLI child will not be registered in the main conversation's subagent panel. Convenience, JSON capture, cost, and permission bypass do not qualify. If no admitted transport meets every requirement, stop. Host registration alone does not prove that an agent rendered in the panel; visual confirmation needs UI observation or explicit user confirmation.
+
+See [Dependencies](#dependencies) and the skill's [dependency preflight](skills/codex-model-router/references/dependency-preflight.md) for the complete boundary.
 
 ### 2. Install the skill directly from GitHub
 
-In a Codex conversation, invoke the built-in skill installer with the public
-skill path:
+In a Codex conversation, invoke the built-in skill installer with the public skill path:
 
 ```text
 $skill-installer Install the skill from https://github.com/luandemelo/codex-model-router/tree/main/skills/codex-model-router
 ```
 
-The installed skill becomes available on the next turn. Start a fresh
-conversation before evaluating its routing behavior.
+The installed skill becomes available on the next turn. Start a fresh conversation before evaluating its routing behavior.
 
 ### 3. Route a development task
 
-Invoke the skill explicitly and include the task, constraints, and relevant
-repository context:
+Invoke the skill and include the task, constraints, and repository context:
 
 ```text
 $codex-model-router Route this task before implementation:
 
-Migrate the production user table to a new primary-key format. Preserve
-backward compatibility during rollout and include rollback verification.
+Update the isolated settings-page copy. Preserve the existing behavior and
+include a focused review of the change.
 ```
 
-This example contains a schema migration, so the deterministic hard-gate policy
-selects Astra/max for planning, execution, and the required review phases.
-Isolated work routes to Luna/medium; eligible substantive local work routes
-to Sol/medium when its validated facts satisfy the published policy.
+This is a clear, bounded, low-risk implementation unit, so it routes to Luna/xhigh with an independent Sol/medium task review. A schema migration is a hard gate and routes to Sol/max, with separate Sol/max review. The compiler classifies each unit on its own, even when an initiative contains other risky work.
 
-CMR prepares and validates the route. It does not silently push code, create a
-GitHub issue, merge a pull request, deploy, or publish a release.
+CMR prepares and validates a route. It does not silently push code, create an issue, merge a pull request, deploy, or publish a release.
 
 ### Full plugin testing
 
-This repository also contains the plugin manifest at
-`.codex-plugin/plugin.json`. The package is not yet published in the universal
-Plugins Directory. Maintainers testing the complete plugin should add it to a
-local marketplace, install it from the Plugins Directory, start a new
-conversation, and run representative positive, negative, and boundary
-requests. See the
-[official plugin testing guide](https://developers.openai.com/plugins/deploy/connect-chatgpt).
+The repository also contains `.codex-plugin/plugin.json`. Maintainers testing the complete plugin can add it to a local marketplace, install it, start a new conversation, and run representative positive, negative, and boundary requests. See the [official plugin testing guide](https://developers.openai.com/plugins/deploy/connect-chatgpt).
 
 ## How it works
 
 ```mermaid
 flowchart TD
-    A[Development task and fresh brief] --> B[Fresh Luna/medium controller]
+    A[Development task and fresh brief] --> B[Fresh GPT-6.1 Sol/medium controller]
     B --> C[Closed facts, uncertainties, and action intents]
     C --> D[Python binding and deterministic compiler]
-    D --> E[Worker route and independent review route]
-    E --> F{Safe-lane selector}
-    F -->|Exact current safe lane| G[Skip semantic preflight]
-    F -->|Run required| H[Fresh Sol/medium semantic preflight]
-    G --> I[Validated CMR dispatch bundle]
-    H --> I
-    I --> J[Fresh Superpowers SDD worker]
-    J --> K[Task review]
-    K --> L[Astra/max whole-branch final review]
+    D --> E{Safe-lane selector}
+    E -->|Exact Luna/xhigh lane| F[Skip semantic preflight]
+    E -->|Run required| G[Fresh GPT-6.1 Sol/medium preflight]
+    F --> H[Validated CMR v4 dispatch bundle]
+    G --> H
+    H --> I[Native Superpowers SDD worker when capable]
+    I --> J[Independent GPT-6.1 Sol/medium task review]
+    J --> K[GPT-6.1 Sol/max whole-branch final review]
 ```
 
 The control flow has six stages:
 
-1. **Controller:** a fresh Luna/medium occurrence emits only a closed
-   `cmr-controller-result-v1` envelope.
-2. **Binding:** runtime code binds the response to the fresh task brief,
-   occurrence identity, hashes, usage, and repository context.
-3. **Compilation:** code derives risk, recurrence, worker route, review route,
-   lifecycle, and external-action state.
-4. **Preflight selection:** only an exact current safe-lane entry can skip a
-   fresh Sol/medium semantic preflight.
-5. **Dispatch:** a complete `cmr-dispatch-bundle-v1` must validate before a
-   worker is started.
-6. **Execution and review:** Superpowers SDD receives a fresh scoped brief;
-   task review and Astra/max final review remain separate occurrences.
+1. **Host preflight:** check the actual model/effort and workflow capabilities before the Sol controller. Native collaboration is the required transport whenever capable.
+2. **Controller:** a fresh GPT-6.1 Sol/medium occurrence emits only a closed `cmr-controller-result-v4` envelope.
+3. **Binding and compilation:** runtime code binds the response to the brief, occurrence, hashes, usage, and repository context; the compiler derives risk, recurrence, worker route, review route, lifecycle, and external-action state.
+4. **Preflight selection:** only an exact current Luna/xhigh safe-lane entry can skip fresh Sol/medium semantic preflight. Luna/max always runs preflight.
+5. **Dispatch:** a complete CMR v4 dispatch bundle must validate before handoff.
+6. **Execution and review:** Superpowers SDD receives the validated brief; both Luna efforts get fresh independent Sol/medium task review. Whole-branch final review remains a separate Sol/max occurrence.
 
-For the detailed invariants, read
-[`docs/architecture.md`](docs/architecture.md),
-[`routing-policy.md`](skills/codex-model-router/references/routing-policy.md),
-and
-[`execution-contract.md`](skills/codex-model-router/references/execution-contract.md).
+A CLI exception is scoped to the occurrence with a real native capability gap and requires prior user notification, including the loss of native panel registration. It preserves the exact model, effort, fresh context, isolation, permissions, skills, and dependencies. If any requirement cannot be met, stop. Registration and visible panel confirmation are separate facts.
+
+For the detailed invariants, read [architecture](docs/architecture.md), [routing policy](skills/codex-model-router/references/routing-policy.md), and [execution contract](skills/codex-model-router/references/execution-contract.md).
 
 ## Routing policy
 
-| Validated situation | Worker | Task review |
+The compiler applies the first matching rule to each bounded unit:
+
+| Validated situation | Worker | Fresh task review |
 | --- | --- | --- |
-| Hard gate, recurrence, canonical planning, or final review | Astra/max | Astra/max |
-| Integration or elevated risk | Sol/high | Sol/high |
-| Eligible low-blast-radius audit, reconciliation, judgment, or approved local work | Sol/medium | Sol/medium |
-| Default isolated work | Luna/medium | Sol/medium |
+| Hard gate, recurring/reappeared defect, canonical planning, or whole-branch final review | GPT-6.1 Sol/max | GPT-6.1 Sol/max |
+| Integration or elevated risk | GPT-6.1 Sol/high | GPT-6.1 Sol/high |
+| Diagnosis, audit, judgment, reconciliation, or complex local work missing a dense-lane predicate | GPT-6.1 Sol/medium | GPT-6.1 Sol/medium |
+| Dense approved bounded local implementation | GPT-6 Luna/max | GPT-6.1 Sol/medium |
+| Clear, isolated, low-risk implementation | GPT-6 Luna/xhigh | GPT-6.1 Sol/medium |
 
-Important invariants:
+The dense Luna/max lane requires all of these: `task_phase: "implementation"`; facts `complex_local_execution`, `architecture_approved`, and `low_blast_radius`; no uncertainty IDs; none of `audit`, `judgment_required`, or `reconciliation`; and no higher-precedence gate. `architecture_approved` means architecture and interfaces are already decided. If any condition is absent, the dense route does not apply.
 
-- Luna/medium handles the controller and isolated work; Sol/medium reviews
-  those tasks. Integration uses Sol/high and critical work uses Astra/max.
-- This release uses an explicit GPT-6 profile. It never substitutes another
-  model when a required model is unavailable.
-- Canonical planning and whole-branch final review are always Astra/max.
-- Two complete failures of the same defect, or a defect that reappears after a
-  declared resolution, stays Astra/max.
-- Cost, quota, urgency, deadlines, authority, sunk cost, diff size, and social
-  pressure never reduce a route.
-- A semantic preflight adjudicates the control plane. It is not worker
-  execution and cannot replace task review.
-- Historical Quality-First Routing (QFR) records are documentary only and
-  cannot authorize CMR dispatch.
+The coordinator, controller, semantic preflight, and default review use Sol/medium. Canonical plan certification, hard gates, recurrence, and whole-branch final review use Sol/max. Both Luna routes use independent Sol/medium task review. There is no silent model or effort fallback when a route is unavailable.
 
-For benchmark evidence, current host requirements, and migration from 0.4.0,
-see [GPT-6 routing update](docs/gpt6-routing.md). GPT-6.1 Sol is a candidate
-for a future validated profile; this release selects `gpt-6-sol` explicitly.
+Cost, quota, urgency, deadlines, authority, sunk cost, diff size, and social pressure never lower a compiled route. Semantic preflight adjudicates the control plane; it cannot act as worker execution or replace task review. Historical Quality-First Routing (QFR) records remain documentary and cannot authorize CMR dispatch.
+
+See [GPT-6 routing](docs/gpt6-routing.md) for the current profile and [migration guidance](docs/migration-from-quality-first-routing.md) for the public 0.5.0-to-0.9.0 upgrade. Benchmark rationale and its limits are documented in [policy basis](skills/codex-model-router/references/policy-basis.md).
 
 ## Core concepts
 
 | Term | Meaning |
 | --- | --- |
-| **Controller** | Fresh Luna/medium call that reports only ontology-backed facts, uncertainties, and action intents. |
+| **Controller** | Fresh GPT-6.1 Sol/medium call that reports only ontology-backed facts, uncertainties, and action intents. |
 | **Occurrence** | Audited record of one model call, including phase, scope, hashes, usage, thread policy, and acceptance state. |
 | **Compiler** | Standard-library Python code that owns route precedence and derives the complete decision. |
-| **Safe lane** | Frozen, plan-bound evidence for a narrowly eligible task that may skip semantic preflight. |
+| **Safe lane** | Frozen, plan-bound evidence for a narrowly eligible Luna/xhigh task that may skip semantic preflight. |
 | **Semantic preflight** | Fresh Sol/medium control-plane adjudication that can accept, replace with a stronger route, or block. |
 | **Dispatch bundle** | Complete validated handoff containing route evidence, preflight state, and the materialized worker brief. |
-| **Recurrence** | A repeated failure of the same bound defect; recurrence escalates fail-closed to Astra/max. |
-| **Hard gate** | A fact such as security-sensitive work, schema migration, concurrency, architecture, or final review that requires Astra/max. |
+| **Recurrence** | Repeated failure of the same bound defect; recurrence routes to Sol/max. |
+| **Hard gate** | A fact such as security-sensitive work, schema migration, concurrency, architecture, or final review that routes to Sol/max. |
 | **External action** | A separately authorized mutation such as issue creation, push, PR, merge, deployment, tag, release, installation, or publication. |
 
 ## CLI and contracts
 
-The skill includes a standard-library Python CLI for contract validation,
-compilation, migration inspection, and occurrence auditing:
+The skill includes standard-library Python commands for contract validation, compilation, migration inspection, dispatch request materialization, and occurrence auditing:
 
 ```bash
 python3 -B skills/codex-model-router/scripts/codex_model_router.py --help
@@ -223,69 +168,42 @@ python3 -B skills/codex-model-router/scripts/codex_model_router.py --help
 | `validate-controller` | Validate one closed controller result. |
 | `compile` | Bind validated evidence and derive the complete route decision. |
 | `validate-dispatch` | Validate a complete CMR dispatch bundle before handoff. |
+| `dispatch-request` | Materialize the exact worker request from a validated bundle and ledger. |
 | `validate-legacy` | Inspect one historical QFR decision without authorizing dispatch. |
 | `audit-occurrence` | Validate call shape, metadata binding, response policy, and usage for one occurrence. |
 | `check-call-shape` | Validate canonical serialized occurrence records or accounting input. |
 
-For example, from the repository root:
-
-```bash
-python3 -B skills/codex-model-router/scripts/codex_model_router.py \
-  validate-controller controller-result.json
-```
-
-Commands read JSON or JSONL files, emit one canonical JSON object, return zero
-only for accepted input, and write concise rejection diagnostics to stderr.
-Planning occurrences require the exact trusted `planning_task_ids` order;
-other phases forbid that field. Serialized occurrence records must be strict,
-closed, duplicate-free `cmr-occurrence-audit-v1` objects.
-
-Published JSON Schemas live under
-[`references/schemas/`](skills/codex-model-router/references/schemas/), and the
-closed ontology vocabularies live directly under
-[`references/`](skills/codex-model-router/references/).
+Commands read JSON or JSONL files, emit canonical JSON, return zero only for accepted input, and write rejection diagnostics to stderr. Current schemas are CMR v4 and route evidence v5; the machine-readable schemas and closed ontology vocabularies live under `skills/codex-model-router/references/`.
 
 ## Dependencies
 
 Required host capabilities:
 
-- Codex with skills, subagents, and access to the exact model slugs used by the
-  routing policy;
-- Superpowers with
-  `superpowers:subagent-driven-development` (host dependency, not bundled);
+- Codex with skills and native collaboration that can meet the exact occurrence requirements;
+- access to `gpt-6.1-sol` at medium, high, and max, and `gpt-6-luna` at xhigh and max;
+- Superpowers with `superpowers:subagent-driven-development` (host dependency, not bundled);
 - Python 3.10+ using the standard library only;
 - Git for local history and review workflows.
 
-There is no runtime PyPI, npm, database, hosted-service, API-key, or MCP
-dependency. Python 3.10, 3.11, 3.12, and 3.13 are exercised in CI.
+A documented, pre-disclosed CLI exception may cover only a real occurrence-scoped native transport gap. It cannot bypass a permission denial or relax any model, effort, context, isolation, skill, or dependency requirement. If no admitted transport can satisfy the occurrence, stop.
 
-GitHub CLI and GitHub Issues are optional integrations for separately
-authorized repository workflows. Model availability, Codex skill/subagent
-support, and Superpowers are host capabilities rather than bundled
-dependencies. See [`docs/dependencies.md`](docs/dependencies.md) for the full
-matrix and limitations.
+There is no runtime PyPI, npm, database, hosted-service, API-key, or MCP dependency. GitHub CLI and GitHub Issues are optional integrations for separately authorized repository workflows. See [dependency documentation](docs/dependencies.md) for the full matrix and limitations.
 
 ## Authorization and safety
 
-CMR separates preparation from permission. Issue creation, repository
-settings, pushes, pull requests, merges, deployments, tags, releases, plugin
-installation, and marketplace publication each require their own scoped
-authorization, exact preview, execution, and readback.
+CMR separates preparation from permission. Issue creation, repository settings, pushes, pull requests, merges, deployments, tags, releases, plugin installation, and marketplace publication each require their own scoped authorization, exact preview, execution, and readback.
 
-A previous approval, generic GitHub permission, or a prepared preview does not
-authorize a different action. CMR records the lifecycle state but has no
-automatic GitHub network or shell side effects.
+A previous approval, generic GitHub permission, or prepared preview does not authorize a different action. CMR records the lifecycle state but has no automatic GitHub network or shell side effects.
 
 CMR does not:
 
 - observe or validate a model's hidden reasoning;
 - guarantee account access to a model or reasoning effort;
-- create missing evidence, retry malformed model responses, or repair an
-  invalid route;
+- create missing evidence, retry malformed model responses, or repair an invalid route;
 - replace human review for business, security, legal, or operational risk;
 - turn historical QFR artifacts into current dispatch authority.
 
-Report vulnerabilities privately using [`SECURITY.md`](SECURITY.md).
+Report vulnerabilities privately using [SECURITY.md](SECURITY.md).
 
 ## Repository layout
 
@@ -308,17 +226,14 @@ Report vulnerabilities privately using [`SECURITY.md`](SECURITY.md).
 
 ## Contributing
 
-Bug reports, documentation improvements, new deterministic test cases, policy
-clarifications, compatibility fixes, and narrowly scoped implementation
-changes are welcome.
+Bug reports, documentation improvements, new deterministic test cases, policy clarifications, compatibility fixes, and narrowly scoped implementation changes are welcome.
 
 Before opening a pull request:
 
 1. Start with a clear issue or specification and keep the change focused.
 2. Create a branch from `main`.
 3. Add a deterministic regression test before behavior changes.
-4. Update documentation and `CHANGELOG.md` when public behavior or contracts
-   change.
+4. Update documentation and `CHANGELOG.md` when public behavior or contracts change.
 5. Run the complete local checks.
 6. Sign every commit with the Developer Certificate of Origin.
 
@@ -338,22 +253,12 @@ Sign a commit with:
 git commit -s
 ```
 
-A contribution is ready for review when tests pass, the public release checker
-reports zero errors, JSON and documentation remain valid, the diff contains no
-private data or generated caches, and the pull request explains the problem,
-the chosen approach, and the verification evidence.
+A contribution is ready for review when tests pass, the public release checker reports zero errors, JSON and documentation remain valid, the diff contains no private data or generated caches, and the pull request explains the problem, the chosen approach, and the verification evidence.
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full DCO and submission
-requirements. Use [`SECURITY.md`](SECURITY.md) instead of a public issue for a
-suspected vulnerability.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the full DCO and submission requirements. Use [SECURITY.md](SECURITY.md) instead of a public issue for a suspected vulnerability.
 
 ## Project status and license
 
-The current public contract version is `0.5.0` and is actively evolving.
-Breaking contract changes, migrations, and compatibility notes are documented
-in [`CHANGELOG.md`](CHANGELOG.md). Existing QFR users should follow the
-[`migration guide`](docs/migration-from-quality-first-routing.md) instead of
-reusing documentary artifacts as CMR dispatch authority.
+The current public package version is `0.9.0`. It distributes the validated 0.8 routing policy and native-first transport correction with CMR v4 schemas and route evidence v5. Local profile updates 0.6.0 through 0.8.0 were not published GitHub releases. Release and migration history is recorded in [CHANGELOG.md](CHANGELOG.md); preserve sealed historical evidence and use fresh plans and ledgers for new work.
 
-Codex Model Router is licensed under the
-[Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE) for attribution details.
+Codex Model Router is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution details.

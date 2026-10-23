@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-safe-lane-certificate-v1.schema.json",
+  "$id": "cmr-safe-lane-certificate-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -10,7 +10,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-safe-lane-certificate-v1"
+      "const": "cmr-safe-lane-certificate-v4"
     },
     "plan": {
       "$ref": "#/$defs/ArtifactRef"

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-preflight-evidence-v1.schema.json",
+  "$id": "cmr-preflight-evidence-v4.schema.json",
   "oneOf": [
     {
       "type": "object",
@@ -14,7 +14,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-evidence-v1"
+          "const": "cmr-preflight-evidence-v4"
         },
         "task_id": {
           "type": "string",
@@ -62,7 +62,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-evidence-v1"
+          "const": "cmr-preflight-evidence-v4"
         },
         "task_id": {
           "type": "string",
@@ -97,7 +97,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-evidence-v1"
+          "const": "cmr-preflight-evidence-v4"
         },
         "task_id": {
           "type": "string",
@@ -135,7 +135,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-evidence-v1"
+          "const": "cmr-preflight-evidence-v4"
         },
         "task_id": {
           "type": "string",
@@ -220,7 +220,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-preflight-evidence-v1"
+          "const": "cmr-preflight-evidence-v4"
         },
         "task_id": {
           "type": "string",

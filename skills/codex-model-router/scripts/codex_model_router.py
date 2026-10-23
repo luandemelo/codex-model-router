@@ -122,6 +122,19 @@ def _validate_legacy(path: str) -> tuple[int, dict[str, Any]]:
     }
 
 
+def _dispatch_request(path: str, ledger_root: str) -> tuple[int, dict[str, Any]]:
+    try:
+        request = cmr_dispatch.dispatch_request(Path(path), Path(ledger_root))
+    except cmr_dispatch.DispatchError as exc:
+        result = _error_result("dispatch-request", list(exc.errors) or [str(exc)])
+        result["blocker_id"] = exc.blocker_id
+        return 1, result
+    return 0, {
+        "command": "dispatch-request", "valid": True, "errors": [],
+        "dispatch_request": request,
+    }
+
+
 def _expectation(
     value: Mapping[str, Any],
 ) -> tuple[cmr_runtime.OccurrenceExpectation, tuple[str, ...] | None]:
@@ -275,6 +288,9 @@ def _parser() -> argparse.ArgumentParser:
     dispatch_parser = sub.add_parser("validate-dispatch")
     dispatch_parser.add_argument("bundle")
     dispatch_parser.add_argument("ledger_root", nargs="?")
+    request_parser = sub.add_parser("dispatch-request")
+    request_parser.add_argument("bundle")
+    request_parser.add_argument("ledger_root")
     sub.add_parser("validate-legacy").add_argument("record")
     audit_parser = sub.add_parser("audit-occurrence")
     audit_parser.add_argument("raw")
@@ -304,6 +320,8 @@ def main(argv: list[str] | None = None) -> int:
             code, result = _compile(args.input, args.runtime)
         elif args.command == "validate-dispatch":
             code, result = _validate_dispatch(args.bundle, args.ledger_root)
+        elif args.command == "dispatch-request":
+            code, result = _dispatch_request(args.bundle, args.ledger_root)
         elif args.command == "validate-legacy":
             code, result = _validate_legacy(args.record)
         elif args.command == "audit-occurrence":

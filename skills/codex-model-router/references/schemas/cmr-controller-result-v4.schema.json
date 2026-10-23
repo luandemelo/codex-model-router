@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-controller-result-v1.schema.json",
+  "$id": "cmr-controller-result-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,7 +11,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-controller-result-v1"
+      "const": "cmr-controller-result-v4"
     },
     "fact_ids": {
       "type": "array",

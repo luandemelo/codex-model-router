@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-occurrence-audit-v1.schema.json",
+  "$id": "cmr-occurrence-audit-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -33,7 +33,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-occurrence-audit-v1"
+      "const": "cmr-occurrence-audit-v4"
     },
     "phase": {
       "type": "string",
@@ -93,8 +93,7 @@
       "type": "string",
       "enum": [
         "gpt-6-luna",
-        "gpt-6-sol",
-        "gpt-6-astra"
+        "gpt-6.1-sol"
       ]
     },
     "reasoning_effort": {
@@ -102,6 +101,7 @@
       "enum": [
         "medium",
         "high",
+        "xhigh",
         "max"
       ]
     },
@@ -236,14 +236,24 @@
               "const": "gpt-6-luna"
             },
             "reasoning_effort": {
-              "const": "medium"
+              "const": "xhigh"
             }
           }
         },
         {
           "properties": {
             "model": {
-              "const": "gpt-6-sol"
+              "const": "gpt-6-luna"
+            },
+            "reasoning_effort": {
+              "const": "max"
+            }
+          }
+        },
+        {
+          "properties": {
+            "model": {
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "medium"
@@ -253,7 +263,7 @@
         {
           "properties": {
             "model": {
-              "const": "gpt-6-sol"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "high"
@@ -263,7 +273,7 @@
         {
           "properties": {
             "model": {
-              "const": "gpt-6-astra"
+              "const": "gpt-6.1-sol"
             },
             "reasoning_effort": {
               "const": "max"

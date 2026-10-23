@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-planner-result-v1.schema.json",
+  "$id": "cmr-planner-result-v4.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,7 +9,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-planner-result-v1"
+      "const": "cmr-planner-result-v4"
     },
     "safe_lanes": {
       "type": "array",

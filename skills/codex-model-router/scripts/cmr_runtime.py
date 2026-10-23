@@ -63,21 +63,23 @@ _OCCURRENCE_RECORD_FIELDS = frozenset(
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _HEAD_RE = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 _CONTROL_ROUTES = {
-    "planning": ("gpt-6-astra", "max"),
-    "controller": ("gpt-6-luna", "medium"),
-    "preflight": ("gpt-6-sol", "medium"),
+    "planning": ("gpt-6.1-sol", "max"),
+    "controller": ("gpt-6.1-sol", "medium"),
+    "preflight": ("gpt-6.1-sol", "medium"),
 }
 _ROUND_FOUR_ROUTES = {
-    ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
-    ("gpt-6-sol", "medium"): ("gpt-6-astra", "max"),
-    ("gpt-6-sol", "high"): ("gpt-6-astra", "max"),
-    ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
+    ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "max"),
+    ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "max"),
+    ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
 }
 _REVIEW_ROUTES = {
-    ("gpt-6-luna", "medium"): ("gpt-6-sol", "medium"),
-    ("gpt-6-sol", "medium"): ("gpt-6-sol", "medium"),
-    ("gpt-6-sol", "high"): ("gpt-6-sol", "high"),
-    ("gpt-6-astra", "max"): ("gpt-6-astra", "max"),
+    ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "high"),
+    ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
 }
 _TOOL_ITEM_TYPES = {
     "command_execution",
@@ -147,9 +149,9 @@ class OccurrenceExpectation:
 
         if scope_kind == "release":
             if phase == "final_review" and round_index is None:
-                route = ("gpt-6-astra", "max")
+                route = ("gpt-6.1-sol", "max")
             elif phase in {"worker", "re_review"} and round_index == 1:
-                route = ("gpt-6-astra", "max")
+                route = ("gpt-6.1-sol", "max")
             else:
                 raise ValueError("release SDD occurrence has an invalid phase or round")
         elif scope_kind == "task":
@@ -201,7 +203,7 @@ def _worker_route(
     if round_index == 4:
         return _ROUND_FOUR_ROUTES[initial_route]
     if round_index == 5:
-        return ("gpt-6-astra", "max")
+        return ("gpt-6.1-sol", "max")
     raise ValueError("task worker round must be between 0 and 5")
 
 
@@ -812,8 +814,8 @@ def _validate_occurrence_record(value: Any) -> list[str]:
     model = item["model"]
     effort = item["reasoning_effort"]
 
-    if item["schema_version"] != "cmr-occurrence-audit-v1":
-        errors.append("schema_version must equal cmr-occurrence-audit-v1")
+    if item["schema_version"] != "cmr-occurrence-audit-v4":
+        errors.append("schema_version must equal cmr-occurrence-audit-v4")
     if not isinstance(phase, str) or phase not in _ALL_PHASES:
         errors.append("phase is outside the published phase set")
     if not isinstance(scope_kind, str) or scope_kind not in {"plan", "task", "release"}:
@@ -842,27 +844,24 @@ def _validate_occurrence_record(value: Any) -> list[str]:
     if expected_response_policy is not None and response_policy != expected_response_policy:
         errors.append("response_policy conflicts with phase")
 
-    if not isinstance(model, str) or model not in {"gpt-6-luna", "gpt-6-sol", "gpt-6-astra"}:
+    if not isinstance(model, str) or model not in {"gpt-6-luna", "gpt-6.1-sol"}:
         errors.append("model is outside the public route matrix")
-    if not isinstance(effort, str) or effort not in {"medium", "high", "max"}:
+    if not isinstance(effort, str) or effort not in {"medium", "high", "xhigh", "max"}:
         errors.append("reasoning_effort is outside the public route matrix")
     route = (model, effort)
     if isinstance(model, str) and isinstance(effort, str) and route not in _ROUND_FOUR_ROUTES:
         errors.append("model/reasoning_effort is outside the public route matrix")
     if isinstance(phase, str) and phase in _CONTROL_ROUTES and route != _CONTROL_ROUTES[phase]:
         errors.append("model/reasoning_effort conflicts with phase and round")
-    if isinstance(phase, str) and phase in {"task_review", "re_review", "final_review"} and route == (
-        "gpt-6-luna",
-        "medium",
-    ):
+    if isinstance(phase, str) and phase in {"task_review", "re_review", "final_review"} and model == "gpt-6-luna":
         errors.append("model/reasoning_effort conflicts with phase and round")
     if (
         isinstance(phase, str)
         and phase in {"worker", "re_review"}
         and scope_kind == "task"
         and round_index == 4
-        and route != ("gpt-6-sol", "medium")
-        and route != ("gpt-6-astra", "max")
+        and route != ("gpt-6.1-sol", "medium")
+        and route != ("gpt-6.1-sol", "max")
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
     if (
@@ -870,11 +869,11 @@ def _validate_occurrence_record(value: Any) -> list[str]:
         and phase in {"worker", "re_review"}
         and scope_kind == "task"
         and round_index == 5
-        and route != ("gpt-6-astra", "max")
+        and route != ("gpt-6.1-sol", "max")
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
     if scope_kind == "release" and isinstance(phase, str) and phase in _SDD_PHASES and route != (
-        "gpt-6-astra",
+        "gpt-6.1-sol",
         "max",
     ):
         errors.append("model/reasoning_effort conflicts with phase and round")
@@ -1075,26 +1074,23 @@ def _validate_expectation(expected: OccurrenceExpectation) -> list[str]:
     route = (expected.model, expected.reasoning_effort)
     if route not in _ROUND_FOUR_ROUTES:
         errors.append("expectation route is outside the public model/effort matrix")
-    if expected.phase in {"task_review", "re_review", "final_review"} and route == (
-        "gpt-6-luna",
-        "medium",
-    ):
-        errors.append("expectation review route cannot be gpt-6-luna/medium")
+    if expected.phase in {"task_review", "re_review", "final_review"} and expected.model == "gpt-6-luna":
+        errors.append("expectation review route cannot be gpt-6-luna")
     if (
         expected.scope_kind == "task"
         and expected.phase in {"worker", "re_review"}
         and expected.round_index == 4
-        and route != ("gpt-6-sol", "medium")
-        and route != ("gpt-6-astra", "max")
+        and route != ("gpt-6.1-sol", "medium")
+        and route != ("gpt-6.1-sol", "max")
     ):
         errors.append("expectation round-4 route must be escalated")
     if (
         expected.scope_kind == "task"
         and expected.phase in {"worker", "re_review"}
         and expected.round_index == 5
-        and route != ("gpt-6-astra", "max")
+        and route != ("gpt-6.1-sol", "max")
     ):
-        errors.append("expectation round-5 route must be gpt-6-astra/max")
+        errors.append("expectation round-5 route must be gpt-6.1-sol/max")
     if expected.phase not in _ALL_PHASES:
         errors.append("expectation.phase is unknown")
     expected_response = (
@@ -1182,8 +1178,8 @@ def _validate_expectation(expected: OccurrenceExpectation) -> list[str]:
         if expected.phase in {"worker", "re_review", "final_review"} and (
             expected.model,
             expected.reasoning_effort,
-        ) != ("gpt-6-astra", "max"):
-            errors.append("release expectation route must be gpt-6-astra/max")
+        ) != ("gpt-6.1-sol", "max"):
+            errors.append("release expectation route must be gpt-6.1-sol/max")
     else:
         valid_cardinality = False
     if not valid_cardinality:
@@ -1194,7 +1190,7 @@ def _validate_expectation(expected: OccurrenceExpectation) -> list[str]:
 
 def _release_scope_id(implementation_head: str, export_head: str) -> str:
     payload = (
-        f"cmr-release-scope-v1\n{implementation_head}\n{export_head}\n"
+        f"cmr-release-scope-v4\n{implementation_head}\n{export_head}\n"
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -1698,7 +1694,7 @@ def summarize_accounting(
     if isinstance(release_review, ReleaseReviewState) and release_review.fix_required:
         sdd_fix_rounds += 1
     return {
-        "schema_version": "cmr-accounting-summary-v1",
+        "schema_version": "cmr-accounting-summary-v4",
         "task_count": len(states),
         "selector_counts": selector_counts,
         "phase_counts": phase_counts,
@@ -1850,7 +1846,7 @@ def audit_occurrence(
         failure_class = "instrument" if instrument_errors else "operational"
 
     return OccurrenceAudit(
-        schema_version="cmr-occurrence-audit-v1",
+        schema_version="cmr-occurrence-audit-v4",
         phase=metadata.get("phase"),
         scope_kind=metadata.get("scope_kind"),
         scope_id=metadata.get("scope_id"),

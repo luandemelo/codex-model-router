@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cmr-route-evidence-v2.schema.json",
+  "$id": "cmr-route-evidence-v5.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "cmr-route-evidence-v2"
+      "const": "cmr-route-evidence-v5"
     },
     "task_id": {
       "type": "string",
@@ -261,7 +261,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "cmr-occurrence-audit-v1"
+          "const": "cmr-occurrence-audit-v4"
         },
         "phase": {
           "const": "controller"
@@ -284,7 +284,7 @@
           "const": "closed_json"
         },
         "model": {
-          "const": "gpt-6-luna"
+          "const": "gpt-6.1-sol"
         },
         "reasoning_effort": {
           "const": "medium"

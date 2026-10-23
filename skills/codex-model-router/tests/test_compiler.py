@@ -58,7 +58,7 @@ class CompilerTests(unittest.TestCase):
         action_intents: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         return {
-            "schema_version": "cmr-controller-result-v1",
+            "schema_version": "cmr-controller-result-v4",
             "fact_ids": list(fact_ids or []),
             "uncertainty_ids": list(uncertainty_ids or []),
             "action_intents": copy.deepcopy(action_intents or []),
@@ -97,7 +97,7 @@ class CompilerTests(unittest.TestCase):
             scope_id=task_id,
             round_index=None,
             task_id=task_id,
-            model="gpt-6-luna",
+            model="gpt-6.1-sol",
             reasoning_effort="medium",
             prompt_sha256=brief.sha256,
             forbidden_thread_ids=(),
@@ -182,13 +182,13 @@ class CompilerTests(unittest.TestCase):
         entries: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         return {
-            "schema_version": "cmr-runtime-input-v1",
+            "schema_version": "cmr-runtime-input-v4",
             "task_phase": task_phase,
             "current_defect_id": current_defect_id,
             "failure_history": copy.deepcopy(failure_history or []),
             "review_scope": review_scope,
             "authorization_registry": {
-                "schema_version": "cmr-authorization-registry-v1",
+                "schema_version": "cmr-authorization-registry-v4",
                 "entries": copy.deepcopy(entries or []),
             },
         }
@@ -260,7 +260,7 @@ class CompilerTests(unittest.TestCase):
                 "occurrence",
             ],
         )
-        self.assertEqual(evidence["schema_version"], "cmr-route-evidence-v2")
+        self.assertEqual(evidence["schema_version"], "cmr-route-evidence-v5")
         self.assertEqual(evidence["task_id"], TASK_ID)
         self.assertEqual(evidence["occurrence"]["task_id"], TASK_ID)
         self.assertEqual(evidence["occurrence"]["scope_id"], TASK_ID)
@@ -367,10 +367,10 @@ class CompilerTests(unittest.TestCase):
 
     def test_route_matrix_is_derived_not_model_authored(self) -> None:
         expected = {
-            "default": ("gpt-6-luna", "medium", "gpt-6-sol", "medium"),
-            "audit": ("gpt-6-sol", "medium", "gpt-6-sol", "medium"),
-            "integration": ("gpt-6-sol", "high", "gpt-6-sol", "high"),
-            "hard_gate": ("gpt-6-astra", "max", "gpt-6-astra", "max"),
+            "default": ("gpt-6-luna", "xhigh", "gpt-6.1-sol", "medium"),
+            "audit": ("gpt-6.1-sol", "medium", "gpt-6.1-sol", "medium"),
+            "integration": ("gpt-6.1-sol", "high", "gpt-6.1-sol", "high"),
+            "hard_gate": ("gpt-6.1-sol", "max", "gpt-6.1-sol", "max"),
         }
         for case_id, want in expected.items():
             decision = self.compile_case(case_id)
@@ -384,10 +384,10 @@ class CompilerTests(unittest.TestCase):
 
     def test_gpt6_route_precedence_and_independent_review(self) -> None:
         routes = {
-            "default": (("gpt-6-luna", "medium"), ("gpt-6-sol", "medium")),
-            "audit": (("gpt-6-sol", "medium"), ("gpt-6-sol", "medium")),
-            "integration": (("gpt-6-sol", "high"), ("gpt-6-sol", "high")),
-            "hard_gate_over_integration": (("gpt-6-astra", "max"), ("gpt-6-astra", "max")),
+            "default": (("gpt-6-luna", "xhigh"), ("gpt-6.1-sol", "medium")),
+            "audit": (("gpt-6.1-sol", "medium"), ("gpt-6.1-sol", "medium")),
+            "integration": (("gpt-6.1-sol", "high"), ("gpt-6.1-sol", "high")),
+            "hard_gate_over_integration": (("gpt-6.1-sol", "max"), ("gpt-6.1-sol", "max")),
         }
         for case_id, (worker, review) in routes.items():
             with self.subTest(case_id=case_id):
@@ -408,7 +408,7 @@ class CompilerTests(unittest.TestCase):
         )
         self.assertEqual(
             recurrence["worker"],
-            {"model": "gpt-6-astra", "reasoning_effort": "max"},
+            {"model": "gpt-6.1-sol", "reasoning_effort": "max"},
         )
         self.assertEqual(recurrence["decisive_reason_id"], "recurring_failure")
 
@@ -436,7 +436,7 @@ class CompilerTests(unittest.TestCase):
                     f'{case["review"][0]}/{case["review"][1]}.',
                 )
 
-    def test_every_hard_gate_fact_selects_astra_max_and_ontology_projections(self) -> None:
+    def test_every_hard_gate_fact_selects_sol_max_and_ontology_projections(self) -> None:
         fact_entries = {entry["id"]: dict(entry) for entry in self.ontologies.fact_entries}
         for fact_id in self.fixture["hard_gate_facts"]:
             with self.subTest(fact_id=fact_id):
@@ -448,7 +448,7 @@ class CompilerTests(unittest.TestCase):
                 entry = fact_entries[fact_id]
                 self.assertEqual(
                     decision["worker"],
-                    {"model": "gpt-6-astra", "reasoning_effort": "max"},
+                    {"model": "gpt-6.1-sol", "reasoning_effort": "max"},
                 )
                 self.assertEqual(decision["risk_signals"], [fact_id])
                 self.assertEqual(decision["hard_gates"], [fact_id])
@@ -485,7 +485,7 @@ class CompilerTests(unittest.TestCase):
                 "justification",
             ],
         )
-        self.assertEqual(decision["schema_version"], "cmr-route-decision-v1")
+        self.assertEqual(decision["schema_version"], "cmr-route-decision-v4")
         self.assertEqual(decision["task_id"], TASK_ID)
         self.assertEqual(decision["brief"], evidence["brief"])
         self.assertEqual(decision["fact_ids"], ["architecture", "authentication"])
@@ -551,8 +551,8 @@ class CompilerTests(unittest.TestCase):
             self.ontologies,
         )
         self.assertEqual(decision["role"], "final_review")
-        self.assertEqual(decision["worker"], {"model": "gpt-6-astra", "reasoning_effort": "max"})
-        self.assertEqual(decision["review"], {"model": "gpt-6-astra", "reasoning_effort": "max"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": "max"})
+        self.assertEqual(decision["review"], {"model": "gpt-6.1-sol", "reasoning_effort": "max"})
         self.assertEqual(decision["decisive_reason_id"], "branch_final_review")
 
         for invalid_runtime in (
@@ -595,7 +595,7 @@ class CompilerTests(unittest.TestCase):
         )
         self.assertEqual(
             two_decision["worker"],
-            {"model": "gpt-6-astra", "reasoning_effort": "max"},
+            {"model": "gpt-6.1-sol", "reasoning_effort": "max"},
         )
         self.assertEqual(two_decision["decisive_reason_id"], "recurring_failure")
 
@@ -629,7 +629,7 @@ class CompilerTests(unittest.TestCase):
                 "defect_id": "defect_a",
             },
         )
-        self.assertEqual(decision["worker"], {"model": "gpt-6-astra", "reasoning_effort": "max"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6.1-sol", "reasoning_effort": "max"})
         self.assertEqual(
             decision["decisive_reason_id"], "regression_after_declared_resolved"
         )
@@ -683,7 +683,7 @@ class CompilerTests(unittest.TestCase):
                 self.assertTrue(decision["recurrence"]["active"])
                 self.assertEqual(
                     decision["worker"],
-                    {"model": "gpt-6-astra", "reasoning_effort": "max"},
+                    {"model": "gpt-6.1-sol", "reasoning_effort": "max"},
                 )
 
     def test_all_external_action_target_forms_compile_only_exact_registry_pairs(self) -> None:
@@ -752,7 +752,7 @@ class CompilerTests(unittest.TestCase):
             self.runtime_input(entries=registry),
             self.ontologies,
         )
-        self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "medium"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "xhigh"})
         self.assertEqual(decision["status"], "ready")
         self.assertEqual(
             [item["state"] for item in decision["external_actions"]],
@@ -832,7 +832,7 @@ class CompilerTests(unittest.TestCase):
         )
         self.assertEqual(decision["status"], "ready")
         self.assertEqual(decision["blocker_ids"], [])
-        self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "medium"})
+        self.assertEqual(decision["worker"], {"model": "gpt-6-luna", "reasoning_effort": "xhigh"})
 
     def test_malformed_or_duplicate_authorization_registry_fails_closed(self) -> None:
         valid = {
@@ -996,16 +996,18 @@ class CompilerTests(unittest.TestCase):
                 mutate(changed)
                 self.assert_compilation_blocker(blocker_id, changed, runtime)
 
-    def test_route_evidence_occurrence_is_controller_luna_medium_only(self) -> None:
+    def test_route_evidence_occurrence_is_controller_sol_medium_only(self) -> None:
         mutations = (
-            ("preflight-max", "preflight", "max"),
-            ("controller-max", "controller", "max"),
-            ("preflight-xhigh", "preflight", "xhigh"),
+            ("preflight-max", "preflight", "gpt-6.1-sol", "max"),
+            ("controller-max", "controller", "gpt-6.1-sol", "max"),
+            ("controller-luna-max", "controller", "gpt-6-luna", "max"),
+            ("profile-six-controller", "controller", "gpt-6-luna", "xhigh"),
         )
-        for label, phase, effort in mutations:
+        for label, phase, model, effort in mutations:
             with self.subTest(label=label):
                 evidence = self.bound_evidence()
                 evidence["occurrence"]["phase"] = phase
+                evidence["occurrence"]["model"] = model
                 evidence["occurrence"]["reasoning_effort"] = effort
                 errors = compiler.validate_route_evidence(
                     evidence, self.ontologies
@@ -1016,11 +1018,11 @@ class CompilerTests(unittest.TestCase):
                 )
 
         schema = contracts.expected_published_schemas(self.ontologies)[
-            "cmr-route-evidence-v2.schema.json"
+            "cmr-route-evidence-v5.schema.json"
         ]
         occurrence = schema["$defs"]["OccurrenceEvidence"]["properties"]
         self.assertEqual(occurrence["phase"], {"const": "controller"})
-        self.assertEqual(occurrence["model"], {"const": "gpt-6-luna"})
+        self.assertEqual(occurrence["model"], {"const": "gpt-6.1-sol"})
         self.assertEqual(occurrence["reasoning_effort"], {"const": "medium"})
 
     def test_decisive_reason_tie_break_is_literal(self) -> None:
@@ -1086,9 +1088,9 @@ class CompilerTests(unittest.TestCase):
 
     def test_new_published_schemas_are_closed_and_detect_drift(self) -> None:
         expected_names = {
-            "cmr-route-evidence-v2.schema.json",
-            "cmr-runtime-input-v1.schema.json",
-            "cmr-route-decision-v1.schema.json",
+            "cmr-route-evidence-v5.schema.json",
+            "cmr-runtime-input-v4.schema.json",
+            "cmr-route-decision-v4.schema.json",
         }
         schemas = contracts.expected_published_schemas(self.ontologies)
         self.assertTrue(expected_names.issubset(schemas))
@@ -1107,7 +1109,7 @@ class CompilerTests(unittest.TestCase):
 
     def test_published_schema_parity_is_json_type_exact(self) -> None:
         mutations = {
-            "cmr-route-evidence-v2.schema.json": (
+            "cmr-route-evidence-v5.schema.json": (
                 (
                     ("$defs", "OccurrenceEvidence", "properties", "exit_code", "const"),
                     False,
@@ -1125,7 +1127,7 @@ class CompilerTests(unittest.TestCase):
                     0.0,
                 ),
             ),
-            "cmr-runtime-input-v1.schema.json": (
+            "cmr-runtime-input-v4.schema.json": (
                 (("additionalProperties",), 0),
                 (("additionalProperties",), 0.0),
                 (
@@ -1137,7 +1139,7 @@ class CompilerTests(unittest.TestCase):
                     1.0,
                 ),
             ),
-            "cmr-route-decision-v1.schema.json": (
+            "cmr-route-decision-v4.schema.json": (
                 (
                     ("$defs", "Recurrence", "oneOf", 0, "properties", "active", "const"),
                     0,
@@ -1180,7 +1182,7 @@ class CompilerTests(unittest.TestCase):
                     self.assertIn("drift", "\n".join(errors))
 
     def test_published_schema_gate_rejects_overflowed_json_number(self) -> None:
-        filename = "cmr-route-evidence-v2.schema.json"
+        filename = "cmr-route-evidence-v5.schema.json"
         with tempfile.TemporaryDirectory() as directory:
             root = copy_references(Path(directory))
             path = root / "references" / "schemas" / filename
@@ -1202,8 +1204,8 @@ class CompilerTests(unittest.TestCase):
 
     def test_schemas_exclude_impossible_review_reason_and_history_shapes(self) -> None:
         schemas = contracts.expected_published_schemas(self.ontologies)
-        decision = schemas["cmr-route-decision-v1.schema.json"]
-        runtime = schemas["cmr-runtime-input-v1.schema.json"]
+        decision = schemas["cmr-route-decision-v4.schema.json"]
+        runtime = schemas["cmr-runtime-input-v4.schema.json"]
 
         self.assertEqual(
             decision["properties"]["review"],
@@ -1219,9 +1221,9 @@ class CompilerTests(unittest.TestCase):
         self.assertEqual(
             review_routes,
             {
-                ("gpt-6-sol", "medium"),
-                ("gpt-6-sol", "high"),
-                ("gpt-6-astra", "max"),
+                ("gpt-6.1-sol", "medium"),
+                ("gpt-6.1-sol", "high"),
+                ("gpt-6.1-sol", "max"),
             },
         )
         reason_ids = decision["properties"]["decisive_reason_id"]["enum"]
