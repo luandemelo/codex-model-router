@@ -1103,12 +1103,53 @@ def _accounting_schema() -> dict[str, Any]:
         },
     }
 
+def _dispatch_binding_schema() -> dict[str, Any]:
+    import cmr_latency
+    from cmr_compiler import _artifact_ref_schema
+    ref = _artifact_ref_schema()
+    return cmr_latency._closed({"schema_version": {"const": "cmr-dispatch-binding-v1"},
+        "ledger_root": {"type": "string", "pattern": "^(?:/|[A-Za-z]:/).+"},
+        "scope": cmr_latency._closed({"task_id": {"type": "string", "minLength": 1},
+            "role": {"enum": ["implementation", "audit", "judgment", "reconciliation", "final_review"]},
+            "brief": ref, "bundle": ref, "final_decision": ref,
+            "prompt_sha256": {"type": "string", "pattern": LOWER_SHA256_PATTERN},
+            "routing_policy": cmr_latency.policy_schema(ref)})})
+
+
+def _latency_occurrence_schema() -> dict[str, Any]:
+    schema = _occurrence_schema()
+    schema["$id"] = "cmr-occurrence-audit-v5.schema.json"
+    schema["properties"]["schema_version"] = {"const": "cmr-occurrence-audit-v5"}
+    schema["required"].append("dispatch_binding")
+    schema["properties"]["dispatch_binding"] = _dispatch_binding_schema()
+    allowed_pairs = schema["allOf"][0]["oneOf"]
+    allowed_pairs.append({"properties": {
+        "model": {"const": "gpt-6.1-terra"}, "reasoning_effort": {"const": "xhigh"}}})
+    schema["properties"]["model"] = {"type": ["string", "null"]}
+    schema["properties"]["reasoning_effort"] = {"type": ["string", "null"]}
+    schema["allOf"] = [{"if": {"properties": {"accepted": {"const": True}}},
+                         "then": {"oneOf": allowed_pairs}}]
+    schema["properties"]["phase"]["enum"] = ["worker", "task_review", "re_review"]
+    schema["properties"]["scope_kind"] = {"const": "task"}
+    return schema
+
+
 def expected_published_schemas(ontologies: Ontologies) -> dict[str, dict[str, Any]]:
+    import copy
+    import cmr_latency
+
     schemas = {
         "cmr-controller-result-v4.schema.json": _controller_schema(ontologies),
         "cmr-preflight-result-v4.schema.json": _preflight_schema(ontologies),
         "cmr-planner-result-v4.schema.json": _planner_schema(ontologies),
         "cmr-occurrence-audit-v4.schema.json": _occurrence_schema(),
+        "cmr-occurrence-audit-v5.schema.json": _latency_occurrence_schema(),
+        "cmr-routing-profile-v1.schema.json": {
+            "$schema": JSON_SCHEMA_DIALECT, "$id": "cmr-routing-profile-v1.schema.json",
+            "const": copy.deepcopy(cmr_latency.PROFILE)},
+        "cmr-dispatch-binding-v1.schema.json": {
+            "$schema": JSON_SCHEMA_DIALECT, "$id": "cmr-dispatch-binding-v1.schema.json",
+            **_dispatch_binding_schema()},
         "cmr-accounting-summary-v4.schema.json": _accounting_schema(),
     }
     # Task-specific schema producers extend parity without moving their runtime

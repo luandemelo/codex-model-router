@@ -1,8 +1,10 @@
 # Routing policy basis: local 0.8, distributed in 0.9
 
-Version 0.9.0 distributes the validated local 0.8 routing choices and the
-native-collaboration-first execution policy. The benchmark evidence below
-motivates model/effort choices; it does not select an execution transport.
+Version 0.9.0 distributed the validated local 0.8 routing choices and the
+native-collaboration-first execution policy. Version 0.11.0 retains that
+default matrix and adds a bound, explicit Terra/xhigh latency preference for
+eligible tasks. The benchmark and pilot evidence below inform the stated
+tradeoff; they do not select an execution transport or change risk precedence.
 
 The 2026-10-23 local policy uses Luna/xhigh for clear bounded low-risk
 implementation and reserves Luna/max for dense bounded local logic whose
@@ -11,7 +13,9 @@ classifies, diagnoses, reconciles, and reviews both Luna efforts. Sol/high
 handles integration and elevated risk; Sol/max retains hard gates, recurrence,
 canonical plan certification, and independent final review. These are local
 routing choices with explicit risk gates, rather than a claim of a universally
-optimal effort.
+optimal effort. Terra/xhigh is available only when a valid task-specific
+latency preference is bound in the current CMR contract; Luna remains the
+default, and every stronger gate retains precedence.
 
 The Artificial Analysis generic model comparison consulted on 2026-10-23
 reported Luna/max at Intelligence Index 38 and $0.07 per benchmark task, and
@@ -29,11 +33,11 @@ for its evaluated Codex agent configurations. That separate comparison does
 not supply a Luna/xhigh Codex result and cannot be combined with the generic
 model costs as if the harnesses were the same.
 
-A fresh live xhigh run can verify actual host arguments, code authorship,
-dispatch binding, review, and the supplied local checks, and can be compared
-with preserved max-run evidence. One task does not demonstrate that either
-effort wins across tasks; this policy document makes no experimental outcome
-claim. Preserve every original run and its metadata rather than relabeling an
-old max record as xhigh. API prices, benchmark task costs, observed local usage,
-and subscription charges remain distinct quantities. Check active host support
-for both exact efforts before dispatch.
+A completed native four-task pilot provides a limited directional sample:
+observed Terra routes completed faster, while Luna had the lower counterfactual
+API Standard cost estimate. The pilot established no quality superiority for
+Terra. Four tasks do not establish a general latency or cost result, and the
+counterfactual API estimate is not Codex subscription billing. Keep those
+measures separate from benchmark task costs, observed usage, and subscription
+charges. Check active host support for the exact compiled model and effort
+before dispatch; Terra capability is required only when that route is selected.

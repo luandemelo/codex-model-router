@@ -2,6 +2,15 @@
 
 All notable changes to Codex Model Router are documented here.
 
+## [0.11.0] - 2026-10-26
+
+- Kept Luna/xhigh as the default for clear eligible implementation and Luna/max for dense approved bounded local implementation. Added an optional GPT-6.1 Terra/xhigh route only for an explicit task-specific latency preference on otherwise Luna-eligible work; Terra is not a default and cannot override risk, recurrence, judgment, review, or external-action gates.
+- Added `cmr-runtime-input-v5` and `cmr-route-decision-v5` with a closed `routing_policy` bound to the published `luna-default-terra-latency-v1` profile and an exact task, phase, brief, and quoted byte span. Runtime-input-v4 and route-decision-v4 retain their original shapes and semantics.
+- Added the deterministic preflight latency attachment immediately before the existing gate-evidence attachment. Preflight must verify positive task-specific authorization. Terra always runs preflight, cannot use the Luna/xhigh safe-lane skip, and receives fresh independent Sol/medium task review. Missing selected Terra capability blocks that dispatch without fallback; it does not block a default Luna route.
+- Added `cmr-dispatch-request-v2`, which carries the exact routing policy in `scope` while retaining the existing native spawn arguments in `request`; legacy decisions keep request-v1. Added dispatch-bound `cmr-occurrence-audit-v5` and `cmr-execution-accounting-input-v2` for mixed historical v4 and new bound v5 audits. `cmr-execution-accounting-v1` output semantics and historical input-v1 remain unchanged.
+- Preserved current bundle-v5 and preflight-invocation-v5 wire shapes, controller-result-v4, preflight-result-v4, route-evidence-v5, and sealed historical artifacts. New opt-ins require v5 runtime/decision contracts and fresh bound evidence; no old record is retrofitted.
+- Recorded the completed native four-task pilot only as a limited directional sample: Terra routes were faster in that sample, Luna had lower counterfactual API Standard cost, and no quality superiority was established for Terra. The API estimate is not Codex subscription billing and is not a general benchmark.
+
 ## [0.10.0] - 2026-10-23
 
 - Preserved the 0.8.0 routing matrix distributed in 0.9.0 and its native-first execution policy.

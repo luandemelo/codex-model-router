@@ -1,7 +1,7 @@
 {
   "name": "codex-model-router",
-  "version": "0.10.0",
-  "description": "Risk-based Codex routing with GPT-6.1 Sol and GPT-6 Luna.",
+  "version": "0.11.0",
+  "description": "Risk-based Codex routing with GPT-6.1 Sol, default GPT-6 Luna, and optional GPT-6.1 Terra latency routing.",
   "author": {
     "name": "Luan de Melo",
     "url": "https://github.com/luandemelo"
@@ -14,13 +14,14 @@
     "model-routing",
     "multi-agent",
     "luna",
-    "gpt-6.1-sol"
+    "gpt-6.1-sol",
+    "terra"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Model Router",
-    "shortDescription": "Risk-based GPT-6.1 Sol and Luna routing",
-    "longDescription": "Routes Codex development work with GPT-6.1 Sol coordination, deterministic risk gates, GPT-6 Luna implementation, and independent review.",
+    "shortDescription": "Risk-based Sol, Luna default, and Terra latency routing",
+    "longDescription": "Routes Codex development work with GPT-6.1 Sol coordination, deterministic risk gates, default GPT-6 Luna implementation, an explicit task-bound GPT-6.1 Terra/xhigh latency preference, and independent review.",
     "developerName": "Luan de Melo",
     "category": "Developer Tools",
     "capabilities": [

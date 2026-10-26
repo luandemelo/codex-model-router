@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import re
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 import cmr_contracts
+import cmr_latency
 
 sys.dont_write_bytecode = True
 
@@ -70,6 +73,7 @@ _CONTROL_ROUTES = {
 _ROUND_FOUR_ROUTES = {
     ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
     ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-terra", "xhigh"): ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "max"),
     ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "max"),
     ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
@@ -77,6 +81,7 @@ _ROUND_FOUR_ROUTES = {
 _REVIEW_ROUTES = {
     ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
     ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-terra", "xhigh"): ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "high"),
     ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
@@ -122,6 +127,7 @@ class OccurrenceExpectation:
     cwd_policy: Mapping[str, Any]
     write_policy: str
     response_policy: str
+    dispatch_binding: Mapping[str, Any] | None = None
 
     @classmethod
     def for_sdd(
@@ -138,8 +144,15 @@ class OccurrenceExpectation:
         forbidden_thread_ids: tuple[str, ...] = (),
         prior_thread_id: str | None = None,
         cwd_policy: Mapping[str, Any],
+        dispatch_binding: Mapping[str, Any] | None = None,
     ) -> "OccurrenceExpectation":
         initial_route = (initial_worker_model, initial_worker_effort)
+        if initial_route == ("gpt-6.1-terra", "xhigh") and dispatch_binding is None:
+            raise ValueError("Terra requires a validated dispatch binding")
+        if dispatch_binding is not None:
+            binding_errors, bound_route = _dispatch_binding_details(dispatch_binding)
+            if binding_errors or bound_route != initial_route:
+                raise ValueError("dispatch binding does not match initial route: " + "; ".join(binding_errors))
         if initial_route not in _ROUND_FOUR_ROUTES:
             raise ValueError("initial worker route is outside the frozen route matrix")
         if phase not in _SDD_PHASES:
@@ -190,7 +203,34 @@ class OccurrenceExpectation:
                 "worktree_write" if phase == "worker" else "source_read_only"
             ),
             response_policy="sdd_report",
+            dispatch_binding=copy.deepcopy(dispatch_binding),
         )
+
+    @classmethod
+    def for_dispatch(cls, *, bundle_path: Path, ledger_root: Path, phase: str,
+                     round_index: int, cwd_policy: Mapping[str, Any],
+                     prompt_sha256: str | None = None,
+                     forbidden_thread_ids: tuple[str, ...] = (),
+                     prior_thread_id: str | None = None) -> "OccurrenceExpectation":
+        """Derive an observed task worker/reviewer expectation from a live bundle.
+
+        This validates artifacts and route selection; it does not execute a worker.
+        Host-observed metadata must independently match these expected values.
+        """
+        import cmr_dispatch
+        request = cmr_dispatch.dispatch_request(Path(bundle_path), Path(ledger_root))
+        scope = request["scope"]
+        if "routing_policy" not in scope:
+            raise ValueError("for_dispatch requires the explicit routing-policy contract")
+        binding = {"schema_version": "cmr-dispatch-binding-v1",
+                   "ledger_root": str(Path(ledger_root).absolute()), "scope": copy.deepcopy(scope)}
+        return cls.for_sdd(phase=phase, scope_kind="task", scope_id=scope["task_id"],
+            round_index=round_index, task_id=scope["task_id"],
+            initial_worker_model=request["request"]["model"],
+            initial_worker_effort=request["request"]["reasoning_effort"],
+            prompt_sha256=scope["prompt_sha256"] if prompt_sha256 is None else prompt_sha256,
+            forbidden_thread_ids=forbidden_thread_ids, prior_thread_id=prior_thread_id,
+            cwd_policy=cwd_policy, dispatch_binding=binding)
 
 
 def _worker_route(
@@ -299,6 +339,7 @@ class OccurrenceAudit:
     errors: tuple[str, ...]
     raw_object: dict[str, Any] | None
     terminal_report: str | None
+    dispatch_binding: Any = None
 
     @classmethod
     def from_record(
@@ -347,11 +388,12 @@ class OccurrenceAudit:
             errors=tuple(item["errors"]),
             raw_object=None,
             terminal_report=None,
+            dispatch_binding=copy.deepcopy(item.get("dispatch_binding")),
         )
 
     def to_record(self) -> dict[str, Any]:
         cwd = dict(self.cwd) if isinstance(self.cwd, Mapping) else self.cwd
-        return {
+        record = {
             "schema_version": self.schema_version,
             "phase": self.phase,
             "scope_kind": self.scope_kind,
@@ -379,6 +421,9 @@ class OccurrenceAudit:
             "failure_class": self.failure_class,
             "errors": list(self.errors),
         }
+        if self.schema_version == "cmr-occurrence-audit-v5":
+            record["dispatch_binding"] = copy.deepcopy(self.dispatch_binding)
+        return record
 
 
 @dataclass(frozen=True)
@@ -786,14 +831,70 @@ def _validate_cwd(value: Any, phase: str) -> list[str]:
     return errors
 
 
+def _dispatch_binding_details(value: Any) -> tuple[list[str], tuple[str, str] | None]:
+    """Reopen a binding; a route in a caller-authored dictionary grants no authority."""
+    import cmr_dispatch
+    errors = cmr_latency._exact(value, {"schema_version", "ledger_root", "scope"}, "dispatch binding")
+    if not isinstance(value, Mapping):
+        return errors, None
+    if value.get("schema_version") != "cmr-dispatch-binding-v1":
+        errors.append("dispatch binding.schema_version is invalid")
+    root = value.get("ledger_root")
+    if not _is_absolute_normalized_path(root):
+        errors.append("dispatch binding ledger_root is not normalized absolute")
+    scope = value.get("scope")
+    scope_fields = {"task_id", "role", "brief", "bundle", "final_decision", "prompt_sha256", "routing_policy"}
+    errors += cmr_latency._exact(scope, scope_fields, "dispatch binding.scope")
+    if errors:
+        return sorted(set(errors)), None
+    try:
+        bundle = cmr_dispatch.ArtifactRef.from_value(scope["bundle"])
+        request = cmr_dispatch.dispatch_request(Path(root) / bundle.path, Path(root))
+        if request["schema_version"] != "cmr-dispatch-request-v2" or not cmr_dispatch._json_type_equal(request["scope"], scope):
+            errors.append("dispatch binding scope does not match validated dispatch request")
+        route = request["request"]["model"], request["request"]["reasoning_effort"]
+        return sorted(set(errors)), route
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return [*errors, f"dispatch binding is invalid: {exc}"], None
+
+
+def _dispatch_occurrence_errors(binding: Any, occurrence: Mapping[str, Any], *,
+                                check_observed: bool) -> list[str]:
+    errors, initial_route = _dispatch_binding_details(binding)
+    if initial_route is None or not isinstance(binding, Mapping):
+        return sorted(set(errors))
+    scope = binding["scope"]
+    if (occurrence.get("scope_kind") != "task" or occurrence.get("scope_id") != scope["task_id"]
+            or occurrence.get("task_id") != scope["task_id"]):
+        errors.append("dispatch binding does not bind occurrence task scope")
+    phase, round_index = occurrence.get("phase"), occurrence.get("round_index")
+    try:
+        if phase == "worker":
+            expected_route = _worker_route(initial_route, round_index)
+            if check_observed and round_index == 0 and occurrence.get("prompt_sha256") != scope["prompt_sha256"]:
+                errors.append("dispatch binding does not bind initial worker prompt")
+        elif phase == "task_review" and type(round_index) is int and round_index == 0:
+            expected_route = _REVIEW_ROUTES[initial_route]
+        elif phase == "re_review" and type(round_index) is int and 1 <= round_index <= 5:
+            expected_route = _REVIEW_ROUTES[_worker_route(initial_route, round_index)]
+        else:
+            raise ValueError("dispatch binding only supports task worker and review phases")
+        if check_observed and expected_route != (occurrence.get("model"), occurrence.get("reasoning_effort")):
+            errors.append("observed model/effort does not match validated dispatch route")
+    except (ValueError, KeyError, TypeError) as exc:
+        errors.append(str(exc))
+    return sorted(set(errors))
+
+
 def _validate_occurrence_record(value: Any) -> list[str]:
     if not isinstance(value, Mapping):
         return ["occurrence record must be a JSON object"]
     item = dict(value)
     errors: list[str] = []
-    missing = sorted(_OCCURRENCE_RECORD_FIELDS - set(item))
+    fields = _OCCURRENCE_RECORD_FIELDS | ({"dispatch_binding"} if item.get("schema_version") == "cmr-occurrence-audit-v5" else set())
+    missing = sorted(fields - set(item))
     unknown = sorted(
-        set(item) - _OCCURRENCE_RECORD_FIELDS,
+        set(item) - fields,
         key=lambda field: repr(field),
     )
     if missing:
@@ -814,8 +915,12 @@ def _validate_occurrence_record(value: Any) -> list[str]:
     model = item["model"]
     effort = item["reasoning_effort"]
 
-    if item["schema_version"] != "cmr-occurrence-audit-v4":
-        errors.append("schema_version must equal cmr-occurrence-audit-v4")
+    version = item["schema_version"]
+    if not isinstance(version, str) or version not in {"cmr-occurrence-audit-v4", "cmr-occurrence-audit-v5"}:
+        errors.append("schema_version must equal cmr-occurrence-audit-v4 or cmr-occurrence-audit-v5")
+    if version == "cmr-occurrence-audit-v5":
+        errors += _dispatch_occurrence_errors(item.get("dispatch_binding"), item,
+                                             check_observed=item.get("accepted") is True)
     if not isinstance(phase, str) or phase not in _ALL_PHASES:
         errors.append("phase is outside the published phase set")
     if not isinstance(scope_kind, str) or scope_kind not in {"plan", "task", "release"}:
@@ -844,39 +949,53 @@ def _validate_occurrence_record(value: Any) -> list[str]:
     if expected_response_policy is not None and response_policy != expected_response_policy:
         errors.append("response_policy conflicts with phase")
 
-    if not isinstance(model, str) or model not in {"gpt-6-luna", "gpt-6.1-sol"}:
-        errors.append("model is outside the public route matrix")
-    if not isinstance(effort, str) or effort not in {"medium", "high", "xhigh", "max"}:
-        errors.append("reasoning_effort is outside the public route matrix")
-    route = (model, effort)
-    if isinstance(model, str) and isinstance(effort, str) and route not in _ROUND_FOUR_ROUTES:
-        errors.append("model/reasoning_effort is outside the public route matrix")
-    if isinstance(phase, str) and phase in _CONTROL_ROUTES and route != _CONTROL_ROUTES[phase]:
-        errors.append("model/reasoning_effort conflicts with phase and round")
-    if isinstance(phase, str) and phase in {"task_review", "re_review", "final_review"} and model == "gpt-6-luna":
-        errors.append("model/reasoning_effort conflicts with phase and round")
-    if (
-        isinstance(phase, str)
-        and phase in {"worker", "re_review"}
-        and scope_kind == "task"
-        and round_index == 4
-        and route != ("gpt-6.1-sol", "medium")
-        and route != ("gpt-6.1-sol", "max")
-    ):
-        errors.append("model/reasoning_effort conflicts with phase and round")
-    if (
-        isinstance(phase, str)
-        and phase in {"worker", "re_review"}
-        and scope_kind == "task"
-        and round_index == 5
-        and route != ("gpt-6.1-sol", "max")
-    ):
-        errors.append("model/reasoning_effort conflicts with phase and round")
-    if scope_kind == "release" and isinstance(phase, str) and phase in _SDD_PHASES and route != (
-        "gpt-6.1-sol",
-        "max",
-    ):
-        errors.append("model/reasoning_effort conflicts with phase and round")
+    enforce_route = version != "cmr-occurrence-audit-v5" or item["accepted"] is True
+    if enforce_route:
+        allowed_models = {"gpt-6-luna", "gpt-6.1-sol"} | ({"gpt-6.1-terra"} if version == "cmr-occurrence-audit-v5" else set())
+        if not isinstance(model, str) or model not in allowed_models:
+            errors.append("model is outside the public route matrix")
+        if not isinstance(effort, str) or effort not in {"medium", "high", "xhigh", "max"}:
+            errors.append("reasoning_effort is outside the public route matrix")
+        route = (model, effort)
+        if isinstance(model, str) and isinstance(effort, str) and route not in _ROUND_FOUR_ROUTES:
+            errors.append("model/reasoning_effort is outside the public route matrix")
+        if isinstance(phase, str) and phase in _CONTROL_ROUTES and route != _CONTROL_ROUTES[phase]:
+            errors.append("model/reasoning_effort conflicts with phase and round")
+        if isinstance(phase, str) and phase in {"task_review", "re_review", "final_review"} and model in {"gpt-6-luna", "gpt-6.1-terra"}:
+            errors.append("model/reasoning_effort conflicts with phase and round")
+        if (
+            isinstance(phase, str)
+            and phase in {"worker", "re_review"}
+            and scope_kind == "task"
+            and round_index == 4
+            and route != ("gpt-6.1-sol", "medium")
+            and route != ("gpt-6.1-sol", "max")
+        ):
+            errors.append("model/reasoning_effort conflicts with phase and round")
+        if (
+            isinstance(phase, str)
+            and phase in {"worker", "re_review"}
+            and scope_kind == "task"
+            and round_index == 5
+            and route != ("gpt-6.1-sol", "max")
+        ):
+            errors.append("model/reasoning_effort conflicts with phase and round")
+        if scope_kind == "release" and isinstance(phase, str) and phase in _SDD_PHASES and route != (
+            "gpt-6.1-sol",
+            "max",
+        ):
+            errors.append("model/reasoning_effort conflicts with phase and round")
+
+    else:
+        # Invalid host dispatches remain rejected evidence with full observed
+        # model/effort and usage; recording one does not authorize that route.
+        if model is not None and not isinstance(model, str):
+            errors.append("rejected observed model must be a string or null")
+        if effort is not None and not isinstance(effort, str):
+            errors.append("rejected observed reasoning_effort must be a string or null")
+        valid_observed_pair = isinstance(model, str) and isinstance(effort, str) and (model, effort) in _ROUND_FOUR_ROUTES
+        if not valid_observed_pair and item["failure_class"] != "instrument":
+            errors.append("unsupported observed route requires instrument failure")
 
     if item["fork_turns"] != "none":
         errors.append("fork_turns must equal none")
@@ -1071,11 +1190,19 @@ def _expected_thread_policy(expected: OccurrenceExpectation) -> str:
 
 def _validate_expectation(expected: OccurrenceExpectation) -> list[str]:
     errors: list[str] = []
+    if expected.dispatch_binding is not None:
+        errors += _dispatch_occurrence_errors(expected.dispatch_binding, {
+            "phase": expected.phase, "scope_kind": expected.scope_kind, "scope_id": expected.scope_id,
+            "task_id": expected.task_id, "round_index": expected.round_index,
+            "model": expected.model, "reasoning_effort": expected.reasoning_effort,
+            "prompt_sha256": expected.prompt_sha256}, check_observed=True)
+    elif expected.model == "gpt-6.1-terra":
+        errors.append("Terra requires a validated dispatch binding")
     route = (expected.model, expected.reasoning_effort)
     if route not in _ROUND_FOUR_ROUTES:
         errors.append("expectation route is outside the public model/effort matrix")
-    if expected.phase in {"task_review", "re_review", "final_review"} and expected.model == "gpt-6-luna":
-        errors.append("expectation review route cannot be gpt-6-luna")
+    if expected.phase in {"task_review", "re_review", "final_review"} and expected.model in {"gpt-6-luna", "gpt-6.1-terra"}:
+        errors.append("expectation review route must be Sol")
     if (
         expected.scope_kind == "task"
         and expected.phase in {"worker", "re_review"}
@@ -1758,6 +1885,8 @@ def audit_occurrence(
         if mismatch:
             instrument_errors.append(f"metadata {field} does not match expectation")
 
+    if metadata.get("dispatch_binding") != expected.dispatch_binding:
+        instrument_errors.append("metadata dispatch_binding does not match expectation")
     observed_cwd = metadata.get("cwd")
     instrument_errors += _validate_cwd(observed_cwd, expected.phase)
     if observed_cwd != expected.cwd_policy:
@@ -1846,7 +1975,7 @@ def audit_occurrence(
         failure_class = "instrument" if instrument_errors else "operational"
 
     return OccurrenceAudit(
-        schema_version="cmr-occurrence-audit-v4",
+        schema_version="cmr-occurrence-audit-v5" if expected.dispatch_binding is not None else "cmr-occurrence-audit-v4",
         phase=metadata.get("phase"),
         scope_kind=metadata.get("scope_kind"),
         scope_id=metadata.get("scope_id"),
@@ -1874,6 +2003,7 @@ def audit_occurrence(
         errors=errors,
         raw_object=parsed.raw_object,
         terminal_report=parsed.terminal_report,
+        dispatch_binding=copy.deepcopy(expected.dispatch_binding),
     )
 
 

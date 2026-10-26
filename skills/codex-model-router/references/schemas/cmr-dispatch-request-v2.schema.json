@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-dispatch-request-v2.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "scope",
+    "request"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-dispatch-request-v2"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "role",
+        "brief",
+        "bundle",
+        "final_decision",
+        "prompt_sha256",
+        "routing_policy"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "implementation",
+            "audit",
+            "judgment",
+            "reconciliation",
+            "final_review"
+          ]
+        },
+        "brief": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "size_bytes"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "bundle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "size_bytes"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "final_decision": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "size_bytes"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "prompt_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "routing_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "profile",
+            "latency_preference"
+          ],
+          "properties": {
+            "profile": {
+              "const": {
+                "profile_id": "luna-default-terra-latency-v1",
+                "profile_sha256": "a4fbe81eeed636e5e431fd43cfaaf73a4b9374293546cecc731025373886378c"
+              }
+            },
+            "latency_preference": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "schema_version",
+                    "task_id",
+                    "task_phase",
+                    "brief",
+                    "preference",
+                    "basis",
+                    "tradeoff",
+                    "evidence"
+                  ],
+                  "properties": {
+                    "schema_version": {
+                      "const": "cmr-latency-preference-v1"
+                    },
+                    "task_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "task_phase": {
+                      "enum": [
+                        "implementation",
+                        "final_review"
+                      ]
+                    },
+                    "brief": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "sha256",
+                        "size_bytes"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    "preference": {
+                      "const": "latency"
+                    },
+                    "basis": {
+                      "const": "explicit_task_opt_in"
+                    },
+                    "tradeoff": {
+                      "const": "latency_over_model_cost"
+                    },
+                    "evidence": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "start_byte",
+                        "end_byte",
+                        "quote"
+                      ],
+                      "properties": {
+                        "start_byte": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end_byte": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_name",
+        "message",
+        "model",
+        "reasoning_effort",
+        "fork_turns"
+      ],
+      "properties": {
+        "task_name": {
+          "type": "string",
+          "pattern": "^cmr_[a-z0-9_]+$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "enum": [
+            "gpt-6-luna",
+            "gpt-6.1-terra",
+            "gpt-6.1-sol"
+          ]
+        },
+        "reasoning_effort": {
+          "enum": [
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "fork_turns": {
+          "const": "none"
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "model": {
+                  "const": "gpt-6-luna"
+                },
+                "reasoning_effort": {
+                  "const": "xhigh"
+                }
+              }
+            },
+            {
+              "properties": {
+                "model": {
+                  "const": "gpt-6-luna"
+                },
+                "reasoning_effort": {
+                  "const": "max"
+                }
+              }
+            },
+            {
+              "properties": {
+                "model": {
+                  "const": "gpt-6.1-terra"
+                },
+                "reasoning_effort": {
+                  "const": "xhigh"
+                }
+              }
+            },
+            {
+              "properties": {
+                "model": {
+                  "const": "gpt-6.1-sol"
+                },
+                "reasoning_effort": {
+                  "const": "medium"
+                }
+              }
+            },
+            {
+              "properties": {
+                "model": {
+                  "const": "gpt-6.1-sol"
+                },
+                "reasoning_effort": {
+                  "const": "high"
+                }
+              }
+            },
+            {
+              "properties": {
+                "model": {
+                  "const": "gpt-6.1-sol"
+                },
+                "reasoning_effort": {
+                  "const": "max"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

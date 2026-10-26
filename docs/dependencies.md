@@ -3,7 +3,7 @@
 ## Required host capabilities
 
 - A current Codex app, CLI, or IDE surface with agent skills and native collaboration.
-- Access to the exact model slugs `gpt-6-luna` and `gpt-6.1-sol`. Required pairs are Luna/xhigh and Luna/max; Sol/medium, Sol/high, and Sol/max.
+- Access to the exact model slugs `gpt-6-luna` and `gpt-6.1-sol`. Required pairs are Luna/xhigh and Luna/max; Sol/medium, Sol/high, and Sol/max. `gpt-6.1-terra`/xhigh is optional and required only when the validated dispatch request selects Terra.
 - Superpowers with `superpowers:subagent-driven-development`. Superpowers 6.3.0 was previously tested; the required skill was checked as present and readable in 6.4.2 during the local profile update. These checks do not certify every host version end to end. Superpowers is not redistributed here.
 - Python 3.10 or newer with the standard library only.
 - Git for local history and review workflows.
@@ -14,11 +14,12 @@ CLI is an exception only for a documented real native capability gap, scoped to 
 
 Host registration and visual panel confirmation are separate. Confirm visible rendering through UI observation or explicit user confirmation; a host registration record alone does not establish that the child appeared in the panel.
 
-The host's actual model list and permission context determine whether a route can run. Do not substitute another model or effort when an exact pair is unavailable. Run the [host dependency preflight](../skills/codex-model-router/references/dependency-preflight.md) before creating a controller.
+The host's actual model list and permission context determine whether a route can run. Do not substitute another model or effort when an exact pair is unavailable. Missing Terra support does not block a default Luna route; when Terra is selected, its absence blocks that dispatch without fallback. Run the [host dependency preflight](../skills/codex-model-router/references/dependency-preflight.md) before creating a controller.
 
 The 0.5.0 historical profile listed `gpt-6-sol` and `gpt-6-astra`; neither
-is an active route in the current 0.10.0 package. The required current model
-slugs are only `gpt-6-luna` and `gpt-6.1-sol`.
+is an active route in the current 0.11.0 package. The required current model
+slugs for default routing are `gpt-6-luna` and `gpt-6.1-sol`; `gpt-6.1-terra`
+is conditional on the exact selected Terra/xhigh route.
 
 ## Runtime boundary
 

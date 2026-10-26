@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 
 import cmr_contracts
 import cmr_gate_evidence
+import cmr_latency
 from cmr_runtime import OccurrenceAudit
 
 sys.dont_write_bytecode = True
@@ -54,6 +55,7 @@ SELECTOR_TRIGGER_IDS = (
 _REVIEW_ROUTES = {
     ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
     ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
+    ("gpt-6.1-terra", "xhigh"): ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-sol", "high"): ("gpt-6.1-sol", "high"),
     ("gpt-6.1-sol", "max"): ("gpt-6.1-sol", "max"),
@@ -724,6 +726,8 @@ def bind_preflight_result(
     )
 
 
+build_preflight_latency_attachment = cmr_latency.build_preflight_latency_attachment
+
 _GATE_ATTACHMENT_MARKER = b"\nCMR_GATE_EVIDENCE_ATTACHMENT_V1\n"
 _GATE_ATTACHMENT_INSTRUCTIONS = (
     b"Independently adjudicate every candidate gate against the full task and phase. "
@@ -779,6 +783,7 @@ def _route_rank(route: Any) -> int | None:
     ranks = {
         ("gpt-6-luna", "xhigh"): 0,
         ("gpt-6-luna", "max"): 1,
+        ("gpt-6.1-terra", "xhigh"): 1,
         ("gpt-6.1-sol", "medium"): 2,
         ("gpt-6.1-sol", "high"): 3,
         ("gpt-6.1-sol", "max"): 4,
@@ -833,6 +838,9 @@ def validate_preflight_monotonicity(
     }
     if not _json_type_equal(candidate_provenance, replacement_provenance):
         errors.append("replacement must preserve immutable route evidence")
+
+    if not _json_type_equal(candidate_decision.get("routing_policy"), replacement_decision.get("routing_policy")):
+        errors.append("replacement must preserve routing policy and latency preference")
 
     fact_entries = {str(entry["id"]): entry for entry in ontologies.fact_entries}
     candidate_facts_value = candidate_evidence.get("fact_ids")
@@ -988,6 +996,13 @@ def apply_preflight(
     )
     if attachment_errors:
         raise CompilationError("artifact_binding_invalid", attachment_errors)
+    if "routing_policy" in candidate_decision:
+        latency_errors = cmr_latency.validate_preflight_latency_attachment(
+            bound_preflight.prompt_bytes, candidate_decision["routing_policy"],
+            build_preflight_gate_attachment(bound_preflight.candidate_gate_evidence,
+                                            bound_preflight.candidate_gate_evidence_bytes))
+        if latency_errors:
+            raise CompilationError("artifact_binding_invalid", latency_errors)
     candidate_decision_payload = _canonical_json_bytes(candidate_decision)
     if (
         hashlib.sha256(candidate_decision_payload).hexdigest()
@@ -1221,12 +1236,17 @@ def _runtime_errors_and_recurrence(
         "review_scope",
         "authorization_registry",
     }
+    version = value.get("schema_version") if isinstance(value, Mapping) else None
+    if version == "cmr-runtime-input-v5":
+        fields.add("routing_policy")
     errors = _exact_fields(value, fields, "runtime input")
     inactive = Recurrence(False, None, None)
     if not isinstance(value, Mapping):
         return sorted(set(errors)), inactive
-    if value.get("schema_version") != "cmr-runtime-input-v4":
-        errors.append("runtime input.schema_version must equal cmr-runtime-input-v4")
+    if not isinstance(version, str) or version not in {"cmr-runtime-input-v4", "cmr-runtime-input-v5"}:
+        errors.append("runtime input.schema_version must equal cmr-runtime-input-v4 or cmr-runtime-input-v5")
+    if version == "cmr-runtime-input-v5":
+        errors += cmr_latency.validate_policy(value.get("routing_policy"), task_phase=value.get("task_phase"))
     task_phase = value.get("task_phase")
     if not isinstance(task_phase, str) or task_phase not in {
         "implementation",
@@ -1368,6 +1388,14 @@ def _compile_route_with_source(
     except cmr_gate_evidence.GateEvidenceError as exc:
         raise CompilationError("artifact_binding_invalid", exc.errors) from exc
 
+    routing_policy = runtime.get("routing_policy")
+    if runtime["schema_version"] == "cmr-runtime-input-v5":
+        preference_errors = cmr_latency.validate_policy(routing_policy, task_id=evidence["task_id"],
+            task_phase=runtime["task_phase"], brief=evidence["brief"], brief_bytes=brief_bytes)
+        if preference_errors:
+            raise CompilationError("artifact_binding_invalid", preference_errors)
+    latency_opt_in = isinstance(routing_policy, Mapping) and routing_policy.get("latency_preference") is not None
+
     facts = list(evidence["fact_ids"])
     fact_entries = {
         str(entry["id"]): entry for entry in ontologies.fact_entries
@@ -1407,8 +1435,10 @@ def _compile_route_with_source(
         worker = ("gpt-6.1-sol", "max")
     elif elevated:
         worker = ("gpt-6.1-sol", "high")
-    elif eligible or local_judgment:
+    elif eligible or local_judgment or (latency_opt_in and evidence["uncertainty_ids"]):
         worker = ("gpt-6.1-sol", "medium")
+    elif latency_opt_in:
+        worker = ("gpt-6.1-terra", "xhigh")
     elif dense_local:
         worker = ("gpt-6-luna", "max")
     else:
@@ -1439,6 +1469,10 @@ def _compile_route_with_source(
         reason_id = eligible[0]
     elif local_judgment:
         reason_id = "complex_local_execution"
+    elif latency_opt_in and evidence["uncertainty_ids"]:
+        reason_id = evidence["uncertainty_ids"][0]
+    elif latency_opt_in:
+        reason_id = "explicit_task_latency_preference"
     elif dense_local:
         reason_id = "dense_approved_local_execution"
     else:
@@ -1448,8 +1482,8 @@ def _compile_route_with_source(
         f"{review[0]}/{review[1]}."
     )
 
-    return {
-        "schema_version": "cmr-route-decision-v4",
+    decision = {
+        "schema_version": "cmr-route-decision-v5" if routing_policy is not None else "cmr-route-decision-v4",
         "task_id": evidence["task_id"],
         "role": role,
         "brief": dict(evidence["brief"]),
@@ -1475,6 +1509,10 @@ def _compile_route_with_source(
         "decisive_reason_id": reason_id,
         "justification": justification,
     }
+
+    if routing_policy is not None:
+        decision["routing_policy"] = copy.deepcopy(routing_policy)
+    return decision
 
 
 def _artifact_ref_schema() -> dict[str, Any]:
@@ -2115,6 +2153,29 @@ def _route_decision_schema(
     }
 
 
+def _latency_runtime_schema(ontologies: cmr_contracts.Ontologies) -> dict[str, Any]:
+    schema = _runtime_input_schema(ontologies)
+    schema["$id"] = "cmr-runtime-input-v5.schema.json"
+    schema["properties"]["schema_version"] = {"const": "cmr-runtime-input-v5"}
+    schema["required"].append("routing_policy")
+    schema["properties"]["routing_policy"] = cmr_latency.policy_schema(_artifact_ref_schema())
+    return schema
+
+
+def _latency_decision_schema(ontologies: cmr_contracts.Ontologies) -> dict[str, Any]:
+    schema = _route_decision_schema(ontologies)
+    schema["$id"] = "cmr-route-decision-v5.schema.json"
+    schema["properties"]["schema_version"] = {"const": "cmr-route-decision-v5"}
+    schema["required"].append("routing_policy")
+    schema["properties"]["routing_policy"] = cmr_latency.policy_schema(_artifact_ref_schema())
+    schema["$defs"]["Route"]["oneOf"].append({"type": "object", "additionalProperties": False,
+        "required": ["model", "reasoning_effort"], "properties": {
+            "model": {"const": "gpt-6.1-terra"}, "reasoning_effort": {"const": "xhigh"}}})
+    schema["properties"]["decisive_reason_id"]["enum"].extend(
+        ["explicit_task_latency_preference", *cmr_contracts.UNCERTAINTY_IDS])
+    return schema
+
+
 def expected_compiler_schemas(
     ontologies: cmr_contracts.Ontologies,
 ) -> dict[str, dict[str, Any]]:
@@ -2122,6 +2183,11 @@ def expected_compiler_schemas(
         "cmr-route-evidence-v5.schema.json": _route_evidence_schema(ontologies),
         "cmr-runtime-input-v4.schema.json": _runtime_input_schema(ontologies),
         "cmr-route-decision-v4.schema.json": _route_decision_schema(ontologies),
+        "cmr-runtime-input-v5.schema.json": _latency_runtime_schema(ontologies),
+        "cmr-route-decision-v5.schema.json": _latency_decision_schema(ontologies),
+        "cmr-latency-preference-v1.schema.json": {
+            "$schema": cmr_contracts.JSON_SCHEMA_DIALECT, "$id": "cmr-latency-preference-v1.schema.json",
+            **cmr_latency.preference_schema(_artifact_ref_schema())},
     }
     # Task 3 owns the artifact schemas while Task 1's parity gate remains the
     # single published-contract entry point.
@@ -2142,6 +2208,7 @@ __all__ = [
     "bind_controller_result",
     "bind_preflight_result",
     "build_preflight_gate_attachment",
+    "build_preflight_latency_attachment",
     "compile_route",
     "derive_recurrence",
     "gate_evidence_context",

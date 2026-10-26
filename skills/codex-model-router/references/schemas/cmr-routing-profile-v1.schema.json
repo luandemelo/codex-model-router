@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-routing-profile-v1.schema.json",
+  "const": {
+    "schema_version": "cmr-routing-profile-v1",
+    "profile_id": "luna-default-terra-latency-v1",
+    "default_clear": {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "xhigh"
+    },
+    "default_dense": {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "max"
+    },
+    "latency_override": {
+      "model": "gpt-6.1-terra",
+      "reasoning_effort": "xhigh"
+    },
+    "latency_review": {
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "medium"
+    },
+    "latency_scope": "explicit_task_only",
+    "fallback": "forbidden",
+    "tradeoff": "latency_over_model_cost",
+    "precedence": "existing_risk_recurrence_review_gates"
+  }
+}

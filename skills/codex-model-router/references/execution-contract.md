@@ -27,16 +27,84 @@ must include the exact task and phase, applicable ontology IDs, and current
 concrete-gate applicability policy; controller classification cannot rely on
 the coordinator having read the policy. This context is guidance, not proof
 that a claim is supported. Bind its occurrence, brief, and raw artifact before
-compiling. The compiler emits
-`cmr-route-decision-v4`; deterministic code owns worker, review, risk,
-recurrence, execution, status, blockers, and external-action lifecycle.
+compiling. `cmr-runtime-input-v4` continues to compile
+`cmr-route-decision-v4` with its original shape and semantics.
+`cmr-runtime-input-v5` compiles
+`cmr-route-decision-v5` when a bound routing policy is supplied. In both paths,
+deterministic code owns worker, review, risk, recurrence, execution, status,
+blockers, and external-action lifecycle. Route evidence remains v5.
 
-The selector may skip only a current exact safe lane. A `run` records a fresh
+The selector may skip only a current exact Luna/xhigh safe lane. Terra/xhigh
+and dense Luna/max always run preflight. A `run` records a fresh
 Sol/medium `cmr-preflight-invocation-v5` and the unchanged closed
 `cmr-preflight-result-v4` (`accept`, `replace`, or `block`). The invocation
 binds the candidate gate-evidence reference and deterministic prompt
 attachment. Preflight is control-plane evidence: its thread cannot be reused as
 worker or review evidence, and it never satisfies task review.
+
+## Versioned latency routing
+
+Terra is an optional `gpt-6.1-terra`/xhigh route for an explicit
+task-specific latency preference on otherwise Luna-eligible implementation.
+It does not change default routes or risk precedence. The host must support the
+exact selected route. Missing Terra capability blocks only a dispatch that
+selected Terra; it neither blocks default Luna work nor triggers fallback.
+Terra always receives an independent fresh Sol/medium task review and cannot
+use the Luna/xhigh safe-lane skip.
+
+The preference requires `cmr-runtime-input-v5`. Its existing runtime fields
+are retained and `routing_policy` has exactly a profile binding and a nullable
+preference. The default `routing_policy` is shown below. It is the complete
+outer object. Its `profile` field is supplied by
+`cmr_latency.profile_binding()`; the helper itself returns only `profile_id`
+and `profile_sha256`:
+
+```json
+{
+  "profile": {
+    "profile_id": "luna-default-terra-latency-v1",
+    "profile_sha256": "a4fbe81eeed636e5e431fd43cfaaf73a4b9374293546cecc731025373886378c"
+  },
+  "latency_preference": null
+}
+```
+
+The digest is SHA-256 over `cmr_latency.PROFILE` encoded as canonical UTF-8
+JSON with sorted keys, separators `(',', ':')`, no insignificant whitespace,
+and no trailing newline. The profile has the published
+[`cmr-routing-profile-v1`](schemas/cmr-routing-profile-v1.schema.json) schema.
+Null preference preserves the default Luna routes.
+
+A non-null `latency_preference` has the exact
+[`cmr-latency-preference-v1`](schemas/cmr-latency-preference-v1.schema.json)
+shape: `schema_version`, `task_id`, `task_phase` (`implementation` or
+`final_review`), `brief` (path, SHA-256, and size), `preference: "latency"`,
+`basis: "explicit_task_opt_in"`,
+`tradeoff: "latency_over_model_cost"`, and `evidence` (UTF-8 byte offsets and
+the exact positive quote). Bind it to the exact task, phase, complete brief,
+quote span, and profile. The illustrative values in the schema examples are
+not reusable artifact references. The object cannot specify a model, effort,
+or route. Missing, malformed, stale, or conflicting bindings block.
+
+The deterministic compiler selects Terra/xhigh only for a valid explicit
+preference in an otherwise Luna-eligible implementation occurrence. Luna/xhigh
+and qualified dense Luna/max remain defaults. Hard gates, integration/elevated
+risk, recurrence, diagnosis or judgment, and final review retain precedence.
+If valid preference evidence coincides with open uncertainty, the compiler
+routes to Sol/medium for judgment and preserves the policy in the decision.
+The `cmr-route-decision-v5` therefore retains the exact `routing_policy` even
+when a stronger gate overrides the preference. `cmr-runtime-input-v4` and
+`cmr-route-decision-v4` remain unchanged and cannot carry the opt-in.
+
+For v5 preflight, append
+`cmr_compiler.build_preflight_latency_attachment(decision["routing_policy"])`
+exactly once immediately before the existing deterministic gate-evidence
+attachment. The independent preflight checks positive task-specific
+authorization, phase, profile, and source quote. Unsupported or ambiguous
+preference evidence blocks. Controller and preflight closed result envelopes
+cannot author a preference, model, effort, or route. Preflight replay and
+replacement still enforce the existing monotonicity and independent gate
+confirmation rules.
 
 ## Occurrence-specific gate evidence
 
@@ -237,9 +305,12 @@ All three gate-reference arguments are required values, including explicit null
 values on branches where replacement or confirmation evidence is forbidden.
 `validate_dispatch_bundle(bundle_path: Path, ledger_root: Path) -> list[str]`
 reopens and verifies every binding. `dispatch_request(bundle_path: Path,
-ledger_root: Path)` validates the same bundle before constructing request-v1;
-the request retains its native model, effort, and `fork_turns: none`, with all
-new references transitively bound through the bundle digest.
+ledger_root: Path)` validates the same bundle before constructing a request.
+Legacy final decisions retain request-v1. A v5 final decision returns
+`cmr-dispatch-request-v2`, whose `scope` includes the exact `routing_policy`;
+`request` still contains only native spawn arguments (`task_name`, `message`,
+`model`, `reasoning_effort`, `fork_turns`). The policy and all other references
+are transitively bound through the bundle digest.
 
 The supported compile CLI requires both explicit sidecar and brief inputs for
 combined and separate-runtime forms:
@@ -283,15 +354,41 @@ preflight evidence does not carry a runtime reference, the caller supplies it
 for replay binding rather than passing a free-form confirmation flag or
 caller-created packet.
 
-The closed input shape is `cmr-execution-accounting-input-v1`, defined in
-[`cmr-execution-accounting-input-v1.schema.json`](schemas/cmr-execution-accounting-input-v1.schema.json).
-Its top-level fields are exactly `schema_version`, `occurrences` (v4 audit
-records), `task_states` (closed v4 states), `plan_sha256`, `release_review`
-(closed v4 input or null), `semantic_results` (boolean map or null),
-`instrument_errors` (unique nonempty strings), and `task_preflight_evidence`
-(the map above). Source files must be frozen; canonical preflight, gate, and
-confirmation directories must pass the dispatcher's sealed no-follow/readback
-validation.
+The closed historical input shape `cmr-execution-accounting-input-v1` remains
+unchanged and rejects v5 occurrence audits. Current accounting uses
+[`cmr-execution-accounting-input-v2`](schemas/cmr-execution-accounting-input-v2.schema.json),
+which supports mixed historical v4 and new bound v5 occurrence audits. The
+composite report remains `cmr-execution-accounting-v1`; its counts, usage, and
+purpose semantics are unchanged. Source files must be frozen; canonical
+preflight, gate, confirmation, and dispatch directories must pass the
+dispatcher's sealed no-follow/readback validation.
+
+New host-observed occurrence audits use `cmr-occurrence-audit-v5`, which binds
+the dispatched task through `cmr-dispatch-binding-v1`. Construct the expected
+occurrence from the validated bundle rather than from caller-supplied model
+strings:
+
+```python
+expected = cmr_runtime.OccurrenceExpectation.for_dispatch(
+    bundle_path=bundle_path,
+    ledger_root=ledger_root,
+    phase="worker",
+    round_index=0,
+    cwd_policy=worker_cwd_policy,
+)
+```
+
+The constructor also supports `task_review` and `re_review`, optional
+`prompt_sha256`, `forbidden_thread_ids`, and `prior_thread_id`, subject to the
+existing phase and round rules. Worker round 0 uses the exact dispatched brief
+hash; a Terra task review is fresh Sol/medium. Host-observed metadata must
+include `dispatch_binding == expected.dispatch_binding`. Auditing reopens the
+sealed bundle and compares its exact scope, profile, and preference with the
+observed model, effort, context, and prompt.
+`OccurrenceExpectation.for_sdd(...)` requires the validated dispatch binding
+for Terra; a manual model string is not authority.
+An attempted unsupported route remains rejected evidence with its observed
+model/effort and full usage. A rejected record never authorizes dispatch.
 
 Confirmation scopes derive from valid canonical sealed replaced-preflight
 evidence whose final decision has required gate claims. The facade rebuilds
@@ -373,15 +470,17 @@ and use a fresh invocation with the literal prompt. Do not silently switch
 transport when native execution is available. This is an execution request,
 not evidence that a worker ran.
 
-An eligible clear low-risk implementation unit must run as Luna/xhigh. Dense
-bounded local logic with approved architecture/interfaces, low blast radius,
-and no uncertainty or higher gates runs as Luna/max; use the exact predicates
-in `routing-policy.md`. Both efforts require independent Sol/medium task review.
-The Sol
-coordinator may prepare its scope, review its diff, and run verification, but
-must delegate generation of that implementation. Classify each unit on its
-own dependencies and risk; unrelated risky work does not change its route.
-If the host cannot run the exact pair, stop that dispatch and report the
+Luna/xhigh is the default for clear low-risk implementation. A valid
+runtime-v5 latency preference can select Terra/xhigh for otherwise
+Luna-eligible implementation. Qualified dense local logic uses Luna/max when
+no valid latency preference is bound; use the exact predicates and precedence in
+`routing-policy.md`. The validated dispatch request controls the exact worker
+model and effort. Both Luna and Terra workers require independent Sol/medium
+task review. The Sol coordinator may prepare scope, review the diff, and run
+verification, but must delegate implementation generation to the worker
+selected by the validated dispatch request. Classify each unit on its own
+dependencies and risk; unrelated risky work does not change its route. If the
+host cannot run the exact selected pair, stop that dispatch and report the
 capability blocker without silently coding it in Sol.
 
 Only a valid `cmr-dispatch-bundle-v5` can hand off to
@@ -393,8 +492,9 @@ CMR escalation matrix. The final whole-branch reviewer is always fresh
 gpt-6.1-sol/max.
 
 Retain actual host model/effort metadata, worker transcript, generated diff,
-and verification results to establish that Luna produced the code. A route,
-request JSON, or synthetic test occurrence cannot establish live execution.
+and verification results to establish that the selected worker produced the
+code. A route, request JSON, or synthetic test occurrence cannot establish
+live execution.
 
 For native execution, retain the native agent identity and parent association.
 Host Active/Done registration is execution evidence; visible panel rendering

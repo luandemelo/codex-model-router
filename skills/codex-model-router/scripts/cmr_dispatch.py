@@ -15,6 +15,7 @@ import cmr_compiler
 import cmr_contracts
 import cmr_runtime
 import cmr_gate_evidence
+import cmr_latency
 
 sys.dont_write_bytecode = True
 
@@ -984,6 +985,22 @@ def _gate_confirmation_schema() -> dict[str, Any]:
     }
 
 
+def _latency_dispatch_request_schema(ontologies: cmr_contracts.Ontologies) -> dict[str, Any]:
+    routes = [("gpt-6-luna", "xhigh"), ("gpt-6-luna", "max"), ("gpt-6.1-terra", "xhigh"),
+              ("gpt-6.1-sol", "medium"), ("gpt-6.1-sol", "high"), ("gpt-6.1-sol", "max")]
+    arguments = cmr_latency._closed({"task_name": {"type": "string", "pattern": "^cmr_[a-z0-9_]+$"},
+        "message": {"type": "string", "minLength": 1},
+        "model": {"enum": ["gpt-6-luna", "gpt-6.1-terra", "gpt-6.1-sol"]},
+        "reasoning_effort": {"enum": ["medium", "high", "xhigh", "max"]},
+        "fork_turns": {"const": "none"}})
+    arguments["allOf"] = [{"oneOf": [{"properties": {
+        "model": {"const": model}, "reasoning_effort": {"const": effort}}} for model, effort in routes]}]
+    return {"$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
+        "$id": "cmr-dispatch-request-v2.schema.json",
+        **cmr_latency._closed({"schema_version": {"const": "cmr-dispatch-request-v2"},
+            "scope": cmr_contracts._dispatch_binding_schema()["properties"]["scope"], "request": arguments})}
+
+
 def expected_dispatch_schemas(
     ontologies: cmr_contracts.Ontologies,
 ) -> dict[str, dict[str, Any]]:
@@ -1000,6 +1017,7 @@ def expected_dispatch_schemas(
         "cmr-preflight-evidence-v4.schema.json": _preflight_evidence_schema(),
         "cmr-dispatch-bundle-v4.schema.json": _historical_dispatch_bundle_schema(),
         "cmr-dispatch-bundle-v5.schema.json": _dispatch_bundle_schema(),
+        "cmr-dispatch-request-v2.schema.json": _latency_dispatch_request_schema(ontologies),
         "cmr-gate-confirmation-v1.schema.json": _gate_confirmation_schema(),
         "cmr-gate-confirmation-result-v1.schema.json": _gate_confirmation_result_schema(),
     }
@@ -1206,14 +1224,20 @@ _DECISION_FIELDS = {
 
 
 def _decision_errors(value: Any) -> list[str]:
-    errors = _exact_fields(value, _DECISION_FIELDS, "route decision")
+    version = value.get("schema_version") if isinstance(value, Mapping) else None
+    fields = _DECISION_FIELDS | ({"routing_policy"} if version == "cmr-route-decision-v5" else set())
+    errors = _exact_fields(value, fields, "route decision")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-route-decision-v4":
+    if not isinstance(version, str) or version not in {"cmr-route-decision-v4", "cmr-route-decision-v5"}:
         errors.append("route decision.schema_version is invalid")
     if not _nonempty_string(value.get("task_id")):
         errors.append("route decision.task_id must be non-empty")
     errors += _ref_errors(value.get("brief"), "route decision.brief")
+    policy = value.get("routing_policy")
+    if version == "cmr-route-decision-v5":
+        errors += cmr_latency.validate_policy(policy, task_id=value.get("task_id"), brief=value.get("brief"))
+    latency_opt_in = isinstance(policy, Mapping) and policy.get("latency_preference") is not None
     envelope = {
         "schema_version": "cmr-controller-result-v4",
         "fact_ids": value.get("fact_ids"),
@@ -1257,9 +1281,11 @@ def _decision_errors(value: Any) -> list[str]:
             "reasoning_effort",
         }:
             errors.append(f"route decision.{field} is invalid")
-        elif (route.get("model"), route.get("reasoning_effort")) not in allowed_routes:
+        elif (route.get("model"), route.get("reasoning_effort")) not in (allowed_routes | (
+            {("gpt-6.1-terra", "xhigh")} if version == "cmr-route-decision-v5" and field == "worker" else set())):
             errors.append(f"route decision.{field} route is invalid")
     expected_reviews = {
+        ("gpt-6.1-terra", "xhigh"): ("gpt-6.1-sol", "medium"),
         ("gpt-6-luna", "xhigh"): ("gpt-6.1-sol", "medium"),
         ("gpt-6-luna", "max"): ("gpt-6.1-sol", "medium"),
         ("gpt-6.1-sol", "medium"): ("gpt-6.1-sol", "medium"),
@@ -1326,8 +1352,10 @@ def _decision_errors(value: Any) -> list[str]:
             expected_worker = ("gpt-6.1-sol", "max")
         elif elevated:
             expected_worker = ("gpt-6.1-sol", "high")
-        elif eligible or local_judgment:
+        elif eligible or local_judgment or (latency_opt_in and value.get("uncertainty_ids")):
             expected_worker = ("gpt-6.1-sol", "medium")
+        elif latency_opt_in:
+            expected_worker = ("gpt-6.1-terra", "xhigh")
         elif dense_local:
             expected_worker = ("gpt-6-luna", "max")
         else:
@@ -1367,6 +1395,10 @@ def _decision_errors(value: Any) -> list[str]:
                 expected_reason = eligible[0]
             elif local_judgment:
                 expected_reason = "complex_local_execution"
+            elif latency_opt_in and value.get("uncertainty_ids"):
+                expected_reason = value["uncertainty_ids"][0]
+            elif latency_opt_in:
+                expected_reason = "explicit_task_latency_preference"
             elif dense_local:
                 expected_reason = "dense_approved_local_execution"
             else:
@@ -2337,6 +2369,13 @@ def _preflight_invocation_details(
         gate_payload, _ = _read_reference(root_descriptor, gate_ref)
         errors += cmr_compiler.validate_preflight_gate_attachment(
             prompt_payload, prompt_ref, gate_ref, gate_payload)
+        candidate_payload, _ = _read_reference(root_descriptor, candidate_decision_ref)
+        candidate_value = _strict_object(candidate_payload, "preflight candidate decision")
+        errors += _decision_errors(candidate_value)
+        if candidate_value.get("schema_version") == "cmr-route-decision-v5":
+            errors += cmr_latency.validate_preflight_latency_attachment(prompt_payload,
+                candidate_value.get("routing_policy"),
+                cmr_compiler.build_preflight_gate_attachment(gate_ref, gate_payload))
         raw_payload, _ = _read_reference(root_descriptor, raw_ref)
         transcript_payload, _ = _read_reference(root_descriptor, transcript_ref)
         occurrence_payload, _ = _read_reference(root_descriptor, occurrence_ref)
@@ -2508,6 +2547,8 @@ def _preflight_evidence_details(
                 errors.append("preflight candidate task_id is invalid")
 
         if outcome == "skipped":
+            if _selector_triggers(candidate):
+                errors.append("skip candidate requires semantic preflight")
             selector = evidence["selector"]
             safe_ref = _ref(selector["safe_lane"], "safe-lane manifest")
             safe_errors, manifest, observed_ref, _ = _safe_lane_details(
@@ -2684,6 +2725,8 @@ def materialize_preflight(
             candidate = _strict_object(candidate_payload, "candidate decision")
             if _decision_errors(candidate) or candidate.get("task_id") != task_id:
                 raise DispatchError("skip candidate decision is invalid")
+            if _selector_triggers(candidate):
+                raise DispatchError("skip candidate requires semantic preflight")
             safe_ref = _ref(selector["safe_lane"], "skip safe-lane")
             safe_errors, manifest, observed_ref, _ = _safe_lane_details(
                 Path(ledger_root) / safe_ref.path, Path(ledger_root)
@@ -3654,8 +3697,8 @@ def dispatch_request(bundle_path: Path, ledger_root: Path) -> dict[str, Any]:
         _read_reference(descriptor, final_ref)
         if not _root_identity_unchanged(ledger_root, root_stat):
             raise DispatchError("ledger root identity changed during request binding")
-        return {
-            "schema_version": "cmr-dispatch-request-v1",
+        request_value = {
+            "schema_version": "cmr-dispatch-request-v2" if "routing_policy" in final else "cmr-dispatch-request-v1",
             "scope": {
                 "task_id": bundle["task_id"],
                 "role": final["role"],
@@ -3672,6 +3715,9 @@ def dispatch_request(bundle_path: Path, ledger_root: Path) -> dict[str, Any]:
                 "fork_turns": "none",
             },
         }
+        if "routing_policy" in final:
+            request_value["scope"]["routing_policy"] = copy.deepcopy(final["routing_policy"])
+        return request_value
     except DispatchError:
         raise
     except (OSError, ValueError, KeyError, TypeError) as exc:
