@@ -3,8 +3,10 @@ from __future__ import annotations
 import copy
 import dataclasses
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -38,6 +40,16 @@ PROFILE_BINDING = {
 }
 OPT_IN = b'For this task, prefer latency over model cost using the optional latency policy.'
 BRIEF = b'Implement the approved isolated function.\n' + OPT_IN + b'\n'
+
+# SHA-256 of the exact schema bytes at immutable baseline commit
+# 018ef3f5fb5a2ff5f22a6cc090e4b8e5e23ac2ea. Keep these independent of the
+# mutable release tree so archive validation needs no Git history.
+HISTORICAL_SCHEMA_SHA256 = {
+    'cmr-runtime-input-v4.schema.json': 'bae436aebc0d9e9cfcea08aaa8725d3e382171595fd4d030c08b9f468e911aa8',
+    'cmr-route-decision-v4.schema.json': 'e5afef27072a214325fc6d5d2e8e704c95080d1b0752d4e27d2f92f22651d30a',
+    'cmr-occurrence-audit-v4.schema.json': '3e42c69dc11df4ad8ab9b6dc6a9968d1a9eaf88e6d508eba1345743a7a2ea3b9',
+    'cmr-execution-accounting-input-v1.schema.json': '3555ecf36ac05d32dec67aab9fbcd1a9e77dc8e924d77800ea0d23d70f21e5f0',
+}
 
 
 def policy(task_id, brief, *, enabled=True, phase='implementation'):
@@ -210,11 +222,30 @@ class LatencyCompilerTests(unittest.TestCase):
             self.assertTrue(name in expected, name)
         for name, schema in expected.items():
             self.assertEqual(json.loads((SKILL_ROOT / 'references/schemas' / name).read_text()), schema, name)
-        for name in ('cmr-runtime-input-v4.schema.json', 'cmr-route-decision-v4.schema.json',
-                     'cmr-occurrence-audit-v4.schema.json', 'cmr-execution-accounting-input-v1.schema.json'):
-            before = subprocess.check_output(['git', 'show', '018ef3f:skills/codex-model-router/references/schemas/' + name],
-                                             cwd=SKILL_ROOT)
-            self.assertEqual(before, (SKILL_ROOT / 'references/schemas' / name).read_bytes(), name)
+        for name, expected_sha256 in HISTORICAL_SCHEMA_SHA256.items():
+            schema_bytes = (SKILL_ROOT / 'references/schemas' / name).read_bytes()
+            self.assertEqual(sha256(schema_bytes), expected_sha256, name)
+
+    def test_historical_schema_check_runs_without_git_history(self):
+        with tempfile.TemporaryDirectory(prefix='cmr-archive-') as temporary:
+            archive_root = Path(temporary) / 'release'
+            archive_skill = archive_root / 'skills/codex-model-router'
+            shutil.copytree(SKILL_ROOT, archive_skill)
+            self.assertFalse(any((parent / '.git').exists()
+                                 for parent in (archive_root, *archive_root.parents)))
+            command = [sys.executable, '-B', '-m', 'unittest',
+                'test_latency.LatencyCompilerTests.'
+                'test_profile_and_new_schemas_roundtrip_without_rewriting_historical_schemas', '-v']
+            process = subprocess.run(command,
+                cwd=archive_skill / 'tests', text=True, capture_output=True, check=False)
+            self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+            # Equivalent JSON with changed bytes must still fail preservation.
+            schema = archive_skill / 'references/schemas/cmr-runtime-input-v4.schema.json'
+            schema.write_bytes(schema.read_bytes() + b'\n')
+            changed = subprocess.run(command,
+                cwd=archive_skill / 'tests', text=True, capture_output=True, check=False)
+            self.assertEqual(changed.returncode, 1, changed.stdout + changed.stderr)
+            self.assertIn('cmr-runtime-input-v4.schema.json', changed.stderr)
 
 
 class LatencyDispatchTests(unittest.TestCase):
@@ -364,6 +395,99 @@ class LatencyDispatchTests(unittest.TestCase):
         path.chmod(0o444)
         with self.assertRaises(ValueError):
             runtime.OccurrenceAudit.from_record(failed.to_record())
+
+    def test_rejected_observed_fields_reach_complete_accounting_without_authorizing_them(self):
+        reference, _ = self.accepted_bundle()
+        expected = runtime.OccurrenceExpectation.for_dispatch(
+            bundle_path=self.helper.ledger / reference.path, ledger_root=self.helper.ledger,
+            phase='worker', round_index=0, cwd_policy=test_runtime.WORKER_CWD)
+        helper = test_runtime.RuntimeTests()
+        payload = helper.payload('sdd_worker_initial')
+        parsed = runtime.audit_jsonl(payload, expected, None)
+        baseline = helper.valid_metadata(payload, expected, thread_id=parsed.thread_id)
+        baseline['dispatch_binding'] = copy.deepcopy(expected.dispatch_binding)
+        accounting = load_module('cmr_confirmation_accounting')
+        expected_usage = {'input_tokens': 101, 'cached_input_tokens': 17,
+            'cache_write_input_tokens': 5, 'output_tokens': 23, 'reasoning_output_tokens': 7}
+        variants = {
+            'model': ({'model': 'gpt-6-luna'}, 'does not match validated dispatch route'),
+            'effort': ({'reasoning_effort': 'low'}, 'does not match validated dispatch route'),
+            'prompt': ({'prompt_sha256': '8' * 64}, 'does not bind initial worker prompt'),
+            'task_scope': ({'scope_id': 'OTHER', 'task_id': 'OTHER'}, 'does not bind occurrence task scope'),
+            'release_scope': ({'scope_kind': 'release', 'scope_id': 'b' * 64,
+                'task_id': None, 'round_index': 1}, 'does not bind occurrence task scope'),
+            'combined': ({'model': 'gpt-6-luna', 'reasoning_effort': 'max',
+                'prompt_sha256': '8' * 64, 'scope_id': 'OTHER', 'task_id': 'OTHER'},
+                'does not bind occurrence task scope'),
+        }
+        for name, (changes, denial) in variants.items():
+            with self.subTest(observed_mismatch=name):
+                metadata = copy.deepcopy(baseline)
+                metadata.update(changes)
+                failed = runtime.audit_occurrence(payload, metadata, expected)
+                self.assertFalse(failed.accepted)
+                self.assertEqual(failed.failure_class, 'instrument')
+                for field, value in changes.items():
+                    self.assertEqual(getattr(failed, field), value)
+                    self.assertIn(f'metadata {field} does not match expectation', failed.errors)
+                record = failed.to_record()
+                self.assertEqual(record['dispatch_binding'], expected.dispatch_binding)
+                self.assertEqual(runtime.OccurrenceAudit.from_record(record).to_record(), record)
+                request = {'schema_version': 'cmr-execution-accounting-input-v2',
+                    'occurrences': [record], 'task_states': [], 'plan_sha256': 'a' * 64,
+                    'release_review': None, 'semantic_results': None, 'instrument_errors': [],
+                    'task_preflight_evidence': {}}
+                self.assertEqual(accounting.validate_execution_accounting_input(request), [])
+                request_ref = self.helper.json_artifact('inputs/rejected-' + name + '.json', request)
+                process = subprocess.run([sys.executable, '-B', str(SKILL_ROOT / 'scripts/codex_model_router.py'),
+                    'check-execution-call-shape', str(self.helper.ledger / request_ref.path), str(self.helper.ledger)],
+                    text=True, capture_output=True, check=False)
+                value = json.loads(process.stdout)
+                self.assertEqual(process.returncode, 1, process.stdout + process.stderr)
+                self.assertFalse(value['valid'])
+                self.assertIn('report', value)
+                report = value['report']
+                self.assertFalse(report['canonical_call_shape'])
+                self.assertEqual(report['total_calls'], 1)
+                self.assertEqual(report['observed_record_count'], 1)
+                self.assertTrue(report['usage_complete'])
+                self.assertEqual(report['total_usage'], expected_usage)
+                self.assertEqual(report['known_usage'], expected_usage)
+                self.assertEqual(report['core_v4']['total_calls'], 1)
+                self.assertEqual(report['core_v4']['usage'], expected_usage)
+                claimed_accepted = dataclasses.replace(failed, accepted=True, failure_class=None, errors=())
+                with self.assertRaisesRegex(ValueError, denial):
+                    runtime.OccurrenceAudit.from_record(claimed_accepted.to_record())
+        request = dispatch.dispatch_request(self.helper.ledger / reference.path, self.helper.ledger)
+        self.assertEqual(request['scope']['task_id'], 'T-001')
+        self.assertEqual(request['request']['model'], 'gpt-6.1-terra')
+        self.assertEqual(request['request']['reasoning_effort'], 'xhigh')
+
+    def test_rejected_task_mismatch_still_requires_trusted_dispatch_binding(self):
+        reference, _ = self.accepted_bundle()
+        expected = runtime.OccurrenceExpectation.for_dispatch(
+            bundle_path=self.helper.ledger / reference.path, ledger_root=self.helper.ledger,
+            phase='worker', round_index=0, cwd_policy=test_runtime.WORKER_CWD)
+        helper = test_runtime.RuntimeTests()
+        payload = helper.payload('sdd_worker_initial')
+        parsed = runtime.audit_jsonl(payload, expected, None)
+        metadata = helper.valid_metadata(payload, expected, thread_id=parsed.thread_id)
+        metadata.update(scope_id='OTHER', task_id='OTHER',
+                        dispatch_binding=copy.deepcopy(expected.dispatch_binding))
+        failed = runtime.audit_occurrence(payload, metadata, expected)
+        self.assertFalse(failed.accepted)
+        for field, value in (('task_id', 'OTHER'), ('prompt_sha256', '8' * 64),
+                             ('routing_policy', {'profile': {'profile_id': PROFILE_BINDING['profile_id'],
+                                 'profile_sha256': '8' * 64}, 'latency_preference': None})):
+            with self.subTest(binding_field=field):
+                record = failed.to_record()
+                record['dispatch_binding']['scope'][field] = value
+                with self.assertRaisesRegex(ValueError, 'scope does not match validated dispatch request'):
+                    runtime.OccurrenceAudit.from_record(record)
+        unbound_expectation = dataclasses.replace(expected, scope_id='OTHER', task_id='OTHER')
+        denied = runtime.audit_occurrence(payload, metadata, unbound_expectation)
+        self.assertFalse(denied.accepted)
+        self.assertIn('dispatch binding does not bind occurrence task scope', denied.errors)
 
     def test_accounting_cannot_drop_binding_or_substitute_other_runtime_for_new_profile(self):
         reference, artifacts = self.accepted_bundle()

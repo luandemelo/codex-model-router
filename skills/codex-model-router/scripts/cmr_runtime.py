@@ -861,7 +861,9 @@ def _dispatch_binding_details(value: Any) -> tuple[list[str], tuple[str, str] | 
 def _dispatch_occurrence_errors(binding: Any, occurrence: Mapping[str, Any], *,
                                 check_observed: bool) -> list[str]:
     errors, initial_route = _dispatch_binding_details(binding)
-    if initial_route is None or not isinstance(binding, Mapping):
+    # Rejected attempts still require trusted dispatch authority, but their
+    # observed fields describe the failed call rather than the expected call.
+    if not check_observed or initial_route is None or not isinstance(binding, Mapping):
         return sorted(set(errors))
     scope = binding["scope"]
     if (occurrence.get("scope_kind") != "task" or occurrence.get("scope_id") != scope["task_id"]
@@ -871,7 +873,7 @@ def _dispatch_occurrence_errors(binding: Any, occurrence: Mapping[str, Any], *,
     try:
         if phase == "worker":
             expected_route = _worker_route(initial_route, round_index)
-            if check_observed and round_index == 0 and occurrence.get("prompt_sha256") != scope["prompt_sha256"]:
+            if round_index == 0 and occurrence.get("prompt_sha256") != scope["prompt_sha256"]:
                 errors.append("dispatch binding does not bind initial worker prompt")
         elif phase == "task_review" and type(round_index) is int and round_index == 0:
             expected_route = _REVIEW_ROUTES[initial_route]
@@ -879,7 +881,7 @@ def _dispatch_occurrence_errors(binding: Any, occurrence: Mapping[str, Any], *,
             expected_route = _REVIEW_ROUTES[_worker_route(initial_route, round_index)]
         else:
             raise ValueError("dispatch binding only supports task worker and review phases")
-        if check_observed and expected_route != (occurrence.get("model"), occurrence.get("reasoning_effort")):
+        if expected_route != (occurrence.get("model"), occurrence.get("reasoning_effort")):
             errors.append("observed model/effort does not match validated dispatch route")
     except (ValueError, KeyError, TypeError) as exc:
         errors.append(str(exc))
