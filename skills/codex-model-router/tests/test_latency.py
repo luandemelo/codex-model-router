@@ -52,6 +52,25 @@ HISTORICAL_SCHEMA_SHA256 = {
 }
 
 
+def observation_wire_domains_allow(schema, record):
+    """Check only the wire version/scope/phase domains, without runtime helpers."""
+    domains = [schema['properties']]
+    for rule in schema.get('allOf', []):
+        accepted = rule.get('if', {}).get('properties', {}).get('accepted', {})
+        if 'const' in accepted and accepted['const'] is record['accepted']:
+            domains.append(rule.get('then', {}).get('properties', {}))
+    for properties in domains:
+        for field in ('schema_version', 'scope_kind', 'phase'):
+            constraint = properties.get(field, {})
+            if set(constraint) - {'type', 'const', 'enum'}:
+                raise AssertionError('unsupported domain constraint for ' + field)
+            if 'const' in constraint and record[field] != constraint['const']:
+                return False
+            if 'enum' in constraint and record[field] not in constraint['enum']:
+                return False
+    return True
+
+
 def policy(task_id, brief, *, enabled=True, phase='implementation'):
     preference = None
     if enabled:
@@ -488,6 +507,79 @@ class LatencyDispatchTests(unittest.TestCase):
         denied = runtime.audit_occurrence(payload, metadata, unbound_expectation)
         self.assertFalse(denied.accepted)
         self.assertIn('dispatch binding does not bind occurrence task scope', denied.errors)
+
+    def test_rejected_diagnostic_scope_and_phase_match_wire_domains_but_accepted_claims_do_not(self):
+        reference, _ = self.accepted_bundle()
+        expected = runtime.OccurrenceExpectation.for_dispatch(
+            bundle_path=self.helper.ledger / reference.path, ledger_root=self.helper.ledger,
+            phase='worker', round_index=0, cwd_policy=test_runtime.WORKER_CWD)
+        helper = test_runtime.RuntimeTests()
+        payload = helper.payload('sdd_worker_initial')
+        parsed = runtime.audit_jsonl(payload, expected, None)
+        baseline = helper.valid_metadata(payload, expected, thread_id=parsed.thread_id)
+        baseline['dispatch_binding'] = copy.deepcopy(expected.dispatch_binding)
+        accounting = load_module('cmr_confirmation_accounting')
+        schema_root = SKILL_ROOT / 'references/schemas'
+        audit_schema = json.loads((schema_root / 'cmr-occurrence-audit-v5.schema.json').read_text())
+        input_schema = json.loads((schema_root / 'cmr-execution-accounting-input-v2.schema.json').read_text())
+        branches = input_schema['properties']['occurrences']['items']['oneOf']
+        accepted = runtime.audit_occurrence(payload, baseline, expected)
+        self.assertTrue(accepted.accepted, accepted.errors)
+        self.assertTrue(observation_wire_domains_allow(audit_schema, accepted.to_record()))
+        self.assertEqual([observation_wire_domains_allow(branch, accepted.to_record())
+                          for branch in branches], [False, True])
+        release = {'scope_kind': 'release', 'scope_id': 'b' * 64, 'task_id': None}
+        review = {'cwd': test_runtime.REVIEW_CWD, 'write_policy': 'source_read_only'}
+        variants = {
+            'release_worker': {**release, 'round_index': 1},
+            'release_re_review': {**release, **review, 'phase': 're_review', 'round_index': 1},
+            'final_review': {**release, **review, 'phase': 'final_review', 'round_index': None},
+            'planning': {'phase': 'planning', 'scope_kind': 'plan', 'scope_id': 'b' * 64,
+                'task_id': None, 'round_index': None, 'response_policy': 'closed_json',
+                'cwd': test_runtime.CONTROL_CWDS['planning'], 'write_policy': 'control_plane_no_write'},
+            'controller': {'phase': 'controller', 'round_index': None, 'response_policy': 'closed_json',
+                'cwd': test_runtime.CONTROL_CWDS['controller'], 'write_policy': 'control_plane_no_write'},
+            'preflight': {'phase': 'preflight', 'round_index': None, 'response_policy': 'closed_json',
+                'cwd': test_runtime.CONTROL_CWDS['preflight'], 'write_policy': 'control_plane_no_write'},
+        }
+        expected_usage = {'input_tokens': 101, 'cached_input_tokens': 17,
+            'cache_write_input_tokens': 5, 'output_tokens': 23, 'reasoning_output_tokens': 7}
+        for name, changes in variants.items():
+            with self.subTest(diagnostic=name):
+                metadata = copy.deepcopy(baseline)
+                metadata.update(changes)
+                observed = runtime.audit_occurrence(payload, metadata, expected)
+                self.assertFalse(observed.accepted)
+                self.assertEqual(observed.failure_class, 'instrument')
+                record = observed.to_record()
+                self.assertEqual(runtime.OccurrenceAudit.from_record(record).to_record(), record)
+                self.assertEqual(record['usage'], expected_usage)
+                self.assertTrue(observation_wire_domains_allow(audit_schema, record), name)
+                self.assertEqual([observation_wire_domains_allow(branch, record)
+                                  for branch in branches], [False, True], name)
+                request = {'schema_version': 'cmr-execution-accounting-input-v2',
+                    'occurrences': [record], 'task_states': [], 'plan_sha256': 'a' * 64,
+                    'release_review': None, 'semantic_results': None, 'instrument_errors': [],
+                    'task_preflight_evidence': {}}
+                self.assertEqual(accounting.validate_execution_accounting_input(request), [])
+                request_ref = self.helper.json_artifact('inputs/diagnostic-' + name + '.json', request)
+                process = subprocess.run([sys.executable, '-B', str(SKILL_ROOT / 'scripts/codex_model_router.py'),
+                    'check-execution-call-shape', str(self.helper.ledger / request_ref.path), str(self.helper.ledger)],
+                    text=True, capture_output=True, check=False)
+                value = json.loads(process.stdout)
+                self.assertEqual(process.returncode, 1, process.stdout + process.stderr)
+                self.assertFalse(value['valid'])
+                self.assertFalse(value['report']['canonical_call_shape'])
+                self.assertEqual(value['report']['total_calls'], 1)
+                self.assertTrue(value['report']['usage_complete'])
+                self.assertEqual(value['report']['total_usage'], expected_usage)
+                self.assertEqual(value['report']['known_usage'], expected_usage)
+                claimed = {**record, 'accepted': True, 'failure_class': None, 'errors': []}
+                self.assertFalse(observation_wire_domains_allow(audit_schema, claimed), name)
+                self.assertEqual([observation_wire_domains_allow(branch, claimed)
+                                  for branch in branches], [False, False], name)
+                with self.assertRaises(ValueError):
+                    runtime.OccurrenceAudit.from_record(claimed)
 
     def test_accounting_cannot_drop_binding_or_substitute_other_runtime_for_new_profile(self):
         reference, artifacts = self.accepted_bundle()

@@ -39,13 +39,22 @@
     "phase": {
       "type": "string",
       "enum": [
+        "planning",
+        "controller",
+        "preflight",
         "worker",
         "task_review",
-        "re_review"
+        "re_review",
+        "final_review"
       ]
     },
     "scope_kind": {
-      "const": "task"
+      "type": "string",
+      "enum": [
+        "plan",
+        "task",
+        "release"
+      ]
     },
     "scope_id": {
       "type": "string",
@@ -455,6 +464,18 @@
         }
       },
       "then": {
+        "properties": {
+          "phase": {
+            "enum": [
+              "worker",
+              "task_review",
+              "re_review"
+            ]
+          },
+          "scope_kind": {
+            "const": "task"
+          }
+        },
         "oneOf": [
           {
             "properties": {

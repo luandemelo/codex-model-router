@@ -1128,9 +1128,9 @@ def _latency_occurrence_schema() -> dict[str, Any]:
     schema["properties"]["model"] = {"type": ["string", "null"]}
     schema["properties"]["reasoning_effort"] = {"type": ["string", "null"]}
     schema["allOf"] = [{"if": {"properties": {"accepted": {"const": True}}},
-                         "then": {"oneOf": allowed_pairs}}]
-    schema["properties"]["phase"]["enum"] = ["worker", "task_review", "re_review"]
-    schema["properties"]["scope_kind"] = {"const": "task"}
+        "then": {"properties": {
+            "phase": {"enum": ["worker", "task_review", "re_review"]},
+            "scope_kind": {"const": "task"}}, "oneOf": allowed_pairs}}]
     return schema
 
 
