@@ -1,6 +1,6 @@
 ---
 name: codex-model-router
-description: Use when a development task needs deterministic routing between gpt-6-luna and gpt-6.1-sol before Superpowers SDD, especially when risk, recurrence, review, or external actions affect dispatch.
+description: Use when a development task needs deterministic routing among gpt-6-luna, gpt-6.1-sol, and an explicitly selected gpt-6.1-terra latency route before Superpowers SDD, especially when risk, recurrence, review, or external actions affect dispatch.
 ---
 
 # Codex Model Router
@@ -15,9 +15,13 @@ decision and it does not add fields to any CMR envelope or dispatch schema.
 
 1. Confirm that the active Codex surface supports skills and a permitted
    execution transport: native collaboration whenever sufficient, or Codex
-   exec only under the documented transport exception below. Confirm the exact `gpt-6-luna` and `gpt-6.1-sol` model slugs with
-   Luna/xhigh, Luna/max and Sol/medium, Sol/high, and Sol/max,
-   Python 3.10+ and Git are available, and the CMR skill itself is loaded.
+   exec only under the documented transport exception below. Confirm the exact
+   `gpt-6-luna` and `gpt-6.1-sol` model slugs with Luna/xhigh, Luna/max and
+   Sol/medium, Sol/high, and Sol/max before the controller. After
+   `dispatch-request` selects Terra, confirm `gpt-6.1-terra`/xhigh before
+   spawning that worker. Terra is optional for default Luna work; its absence
+   does not block that route and never triggers a substitute model. Confirm
+   Python 3.10+, Git, and the loaded CMR skill.
 2. Confirm that the enabled skill inventory contains a readable
    `superpowers:subagent-driven-development`. Treat a missing, disabled, or
    unreadable skill as unavailable. Record the visible Superpowers version;
@@ -37,31 +41,66 @@ decision and it does not add fields to any CMR envelope or dispatch schema.
    fresh conversation or restart Codex when needed, re-check the host inventory,
    and continue only after every required capability is available.
 
-The local 0.8.0 profile keeps GPT-6.1 Sol/medium in coordination and delegates
-clear bounded low-risk implementation to GPT-6 Luna/xhigh. Dense local logic
-uses Luna/max only when architecture and interfaces are already approved,
-blast radius is low, and no open uncertainty, judgment, or higher risk applies.
-Use the exact predicates in [routing-policy.md](references/routing-policy.md).
-The Sol coordinator
-must dispatch that worker; it must not write eligible implementation code
-itself. Classify each unit's actual scope: a risky module does not escalate an
-independent low-risk unit in the same initiative. Model and effort must be
-explicit host parameters, never prose. Do not substitute models or efforts,
-silently fall back to Sol implementation, or claim a compiled route was
-executed. If the selected Luna effort cannot run, report the exact blocker.
+The published profile retains the locally validated 0.8.0 routing matrix:
+GPT-6.1 Sol/medium coordinates, while clear bounded low-risk implementation
+defaults to GPT-6 Luna/xhigh. Dense local logic uses Luna/max only when
+architecture and interfaces are already approved, blast radius is low, and no
+open uncertainty, judgment, or higher risk applies. An explicit, task-specific
+latency preference can select GPT-6.1 Terra/xhigh for otherwise Luna-eligible
+implementation. The selected Terra route trades lower latency for potentially
+higher model cost. Luna/xhigh remains the default when no valid preference is
+bound. Use the exact predicates in [routing-policy.md](references/routing-policy.md).
+The Sol coordinator must dispatch the compiled route; it must not write
+eligible implementation code itself. Classify each unit's actual scope: a
+risky module does not escalate an independent low-risk unit in the same
+initiative. Model and effort must be explicit host parameters, never prose. Do
+not substitute models or efforts, silently fall back, or claim a compiled route
+was executed. If the selected model/effort cannot run, report the exact blocker.
 
-Public package 0.10.0 preserves the locally validated 0.8.0 routing matrix and
-native-first correction distributed in 0.9.0. The last public package before
+Public package 0.11.0 preserves the locally validated 0.8.0 routing matrix and
+native-first correction distributed in 0.9.0, and adds the bound Terra latency
+preference. The last public package before
 0.9.0 was 0.5.0, which used CMR v1 contracts and route evidence v2; 0.6.0
 through 0.8.0 were local profiles, not published GitHub releases. Controller-
-result-v4, preflight-result-v4, route-evidence-v5, route-decision-v4, and
-runtime-input-v4 remain unchanged. Current dispatch uses bundle-v5 and
-preflight-invocation-v5 with mandatory gate evidence. Keep sealed historical
+result-v4, preflight-result-v4, route-evidence-v5, route-decision-v4,
+runtime-input-v4, occurrence-audit-v4, and execution-accounting-input-v1 remain
+unchanged historical contracts. Runtime-input-v5 and route-decision-v5 carry
+the new routing policy. Current dispatch still uses bundle-v5 and
+preflight-invocation-v5 with mandatory gate evidence; a v5 decision produces
+dispatch-request-v2 with its exact policy in `scope`. New v5 occurrence audits
+are accounted with execution-accounting-input-v2. Keep sealed historical
 records, packages, and commit references unchanged; create fresh plans,
 occurrences, sidecars, and bundles for new work. Package versions are not
 embedded in evidence, so do not infer rejection from a nonexistent version
 field. QFR remains documentary only, with its validator and reference schemas
 byte-preserved.
+
+## Explicit latency preference
+
+The default remains Luna/xhigh for clear eligible implementation and Luna/max
+for dense approved local implementation. A task may choose Terra/xhigh only
+with a valid explicit latency preference bound to that implementation's task,
+phase, complete brief reference, quoted UTF-8 byte span, and current routing
+profile. The preference records the latency-versus-model-cost tradeoff; it
+cannot name a model, effort, or route. Use
+`cmr_latency.profile_binding()` and the published
+[`cmr-latency-preference-v1`](references/schemas/cmr-latency-preference-v1.schema.json)
+contract. Malformed, stale, or contradictory evidence blocks. Risk, recurrence,
+judgment, review, semantic-preflight, replacement-confirmation, and
+external-action gates keep their normal precedence.
+
+Under existing scoped authorization, the coordinator may choose a task-specific
+latency preference and record it in that task's brief; no additional human
+confirmation is required for each use. The exact brief evidence and CMR binding
+are still required for every opted-in task.
+
+Latency routing requires `cmr-runtime-input-v5`; do not add preference fields
+to `cmr-runtime-input-v4`. Its `routing_policy` contains the current profile
+binding and either a null preference or the task-bound preference. Null keeps
+the default Luna routes. A v5 decision retains that policy, including when a
+stronger gate selects Sol. If Terra/xhigh is selected, the active host must
+support that exact pair; missing support blocks that dispatch without changing
+the default Luna route or substituting another model.
 
 Every asserted hard-gate or integration/elevated-risk fact needs occurrence-
 specific evidence bound to the task brief and exact audited source. Support each
@@ -99,19 +138,22 @@ real high-risk gates retain precedence regardless of cost or convenience.
    an empty claim list is required when none are asserted. Each claim has a
    positive basis, a nonempty quote matching a UTF-8 byte slice of the brief,
    and a nonempty explanation. Bind the sidecar before route compilation.
-   Compile through `cmr_compiler.compile_route(...,
+   For a latency opt-in, use `cmr-runtime-input-v5`; v4 retains its original
+   route semantics and does not accept the new policy. Compile through
+   `cmr_compiler.compile_route(...,
    gate_evidence=bound_gate_evidence, brief_bytes=brief_bytes)`; both keyword
    inputs are required. CLI compilation also requires explicit
    `--gate-evidence SIDECAR_PATH --brief BRIEF_PATH` flags. The compiler owns
    worker, review, risk, recurrence, and lifecycle fields.
 3. Select preflight with the CMR dispatcher. Skip only for an exact current
    Luna/xhigh entry in one frozen safe-lane manifest. The exact model and effort
-   must match: dense Luna/max always runs preflight and cannot reuse that skip.
-   Every `run` invokes fresh Sol/medium preflight. Create the prompt suffix with
-   `cmr_compiler.build_preflight_gate_attachment`, append its exact bytes once,
-   then bind using `candidate_gate_evidence`, `prompt_bytes`, and
-   `candidate_gate_evidence_bytes`. The v5 invocation binds the candidate
-   sidecar and the full prompt includes its exact bytes. Preflight
+   must match: dense Luna/max and Terra/xhigh always run preflight and cannot
+   reuse that skip. Every `run` invokes fresh Sol/medium preflight. For a v5
+   preference, append the deterministic `build_preflight_latency_attachment`
+   exactly once immediately before the existing exact gate-evidence
+   attachment; then bind the full prompt and exact sidecar bytes. The v5
+   invocation binds the candidate sidecar and the full prompt includes its
+   exact bytes. Preflight
    assesses relevance against the full brief and phase; it does not delete
    facts or lower routes. A `replace` result requires a replacement sidecar
    bound to that audited preflight result, including when it has no gate claims.
@@ -146,16 +188,18 @@ real high-risk gates retain precedence regardless of cost or convenience.
    contract for input bindings, usage handling, and report semantics.
 6. Generate the worker request with `cmr_dispatch.dispatch_request`, or run
    `python3 <absolute-skill>/scripts/codex_model_router.py dispatch-request
-   <absolute-bundle> <absolute-ledger>`. Pass its exact model, effort, fresh
-   context, and bound brief to the native spawn tool through **REQUIRED
+   <absolute-bundle> <absolute-ledger>`. For a v5 decision, the returned
+   `cmr-dispatch-request-v2` carries the exact `routing_policy` in `scope`;
+   `request` contains only native spawn arguments. Pass its exact model, effort,
+   fresh context, and bound brief to the native spawn tool through **REQUIRED
    SUB-SKILL:** `superpowers:subagent-driven-development`. An explicit Codex
    exec adapter may be used only under the justified and pre-disclosed
    exception in the execution-transport policy below. Record the actual
    worker model/effort, transcript, generated diff, and verification results;
    request JSON or synthetic occurrence fixtures are not execution evidence.
-   Both Luna efforts require fresh independent Sol/medium task review, separate
-   from preflight; whole-branch final review is
-   independent Sol/max.
+   Luna/xhigh, Luna/max, and Terra/xhigh each require fresh independent
+   Sol/medium task review, separate from preflight; whole-branch final review
+   is independent Sol/max. Terra cannot use the Luna/xhigh safe-lane skip.
 7. Keep Issue, push, PR, merge, deploy, and skill-install actions blocked until
    their own scoped authorization, preview, and readback are recorded.
 

@@ -1,13 +1,19 @@
 # Codex Model Router defaults
 
-- Keep GPT-6.1 Sol/medium in coordination. Under the published 0.10.0 profile, delegate
-  each clear bounded low-risk implementation unit to GPT-6 Luna/xhigh; use
-  Luna/max only for dense approved bounded local logic with all three facts
-  `complex_local_execution`, `architecture_approved`, and `low_blast_radius`,
-  implementation phase, no uncertainty, no judgment/audit/reconciliation, and
-  no higher gate;
-  Sol must not write that implementation itself or silently take over when
-  the selected effort is unavailable. Classify units independently of unrelated risks.
+- Keep GPT-6.1 Sol/medium in coordination. Under the published 0.11.0 profile,
+  Luna/xhigh is the default for each clear bounded low-risk implementation
+  unit. A valid, explicit task-specific latency preference bound through the
+  current CMR contract may select GPT-6.1 Terra/xhigh for otherwise
+  Luna-eligible implementation; this trades lower latency for potentially
+  higher model cost. Use Luna/max only for dense approved bounded local logic
+  with all three facts `complex_local_execution`, `architecture_approved`, and
+  `low_blast_radius`, implementation phase, no uncertainty, no
+  judgment/audit/reconciliation, and no higher gate. Sol must not write that
+  implementation itself. Do not silently substitute models or efforts. Classify
+  units independently of unrelated risks.
+  Under existing scoped authorization, the coordinator may record the
+  task-specific latency choice in the brief without a new human confirmation
+  for each use; the exact positive brief quote and CMR binding remain required.
 - Use Sol/medium for the controller, semantic preflight, substantive judgment
   and default task review; Sol/high for integration or elevated risk; Sol/max
   for planning, hard gates, recurrence, and independent final review.
@@ -20,17 +26,24 @@
   not delete facts or silently down-route. Structural checks cannot establish
   natural-language relevance; preflight must assess it against the full task.
 - Check exact `gpt-6-luna` and `gpt-6.1-sol` model/effort availability on the
-  active host. Select the exact effort explicitly in host parameters. Keep sealed
-  0.4 through 0.9 evidence unchanged. Version 0.10 preserves the validated 0.8
-  matrix and native-first policy while requiring gate-evidence-v1, bundle-v5,
-  and preflight-invocation-v5 for current dispatch. Use fresh ledgers and
-  sidecars for new work. Missing exact capability blocks dispatch.
+  active host; check `gpt-6.1-terra`/xhigh only when the validated request
+  selects Terra. Terra absence does not block a default Luna route. Select the
+  exact effort explicitly in host parameters. Keep sealed historical evidence
+  and package references unchanged. Version 0.11 preserves the validated 0.8
+  default matrix and native-first policy while adding runtime-input-v5 and
+  route-decision-v5 for the bound latency preference. Current dispatch still
+  requires gate-evidence-v1, bundle-v5, and preflight-invocation-v5; v5 decisions
+  produce dispatch-request-v2 and v5 occurrence audits use
+  execution-accounting-input-v2. Use fresh ledgers and sidecars for new work.
+  Missing capability for the exact selected route blocks; it never triggers
+  automatic fallback.
 - Invoke `$codex-model-router` before Superpowers SDD dispatch.
 - The Sol/medium controller emits only `cmr-controller-result-v4`; code binds
   the occurrence and compiles all route, review, recurrence, and lifecycle
   fields.
 - Skip only an exact current Luna/xhigh safe-lane entry; compare model and effort.
-  Dense Luna/max always runs preflight. A `run` gets fresh
+  Dense Luna/max and Terra/xhigh always run preflight. Every Luna and Terra
+  worker gets an independent Sol/medium task review. A `run` gets fresh
   Sol/medium preflight with bound candidate gate evidence; preflight never
   replaces task review. A `replace` requires its own source-bound gate sidecar.
   If final gate claims remain, require exactly one independent fresh Sol/medium

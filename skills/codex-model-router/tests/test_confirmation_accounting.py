@@ -272,11 +272,25 @@ class ConfirmationAccountingTests(unittest.TestCase):
         self.assertEqual(process.returncode, 1)
         self.assertNotIn("report", json.loads(process.stdout))
 
+    def test_array_schema_version_returns_validation_errors_instead_of_raising(self):
+        request = {"schema_version": [], "occurrences": [], "task_states": [],
+            "plan_sha256": "a" * 64, "release_review": None, "semantic_results": None,
+            "instrument_errors": [], "task_preflight_evidence": {}}
+        errors = self.require_accounting().validate_execution_accounting_input(request)
+        self.assertIn("execution accounting input.schema_version is invalid", errors)
+        process = self.run_cli(request)
+        self.assertEqual(process.returncode, 1)
+        result = json.loads(process.stdout)
+        self.assertFalse(result["valid"])
+        self.assertIn("execution accounting input.schema_version is invalid", result["errors"])
+        self.assertNotIn("report", result)
+
     def test_published_current_input_and_report_schemas_match_executable_contracts(self):
         facade = self.require_accounting()
         schemas = facade.expected_execution_accounting_schemas()
         self.assertEqual(set(schemas), {"cmr-execution-accounting-v1.schema.json",
-            "cmr-execution-accounting-input-v1.schema.json"})
+            "cmr-execution-accounting-input-v1.schema.json",
+            "cmr-execution-accounting-input-v2.schema.json"})
         for filename, schema in schemas.items():
             with self.subTest(filename=filename):
                 self.assertEqual(json.loads((SKILL_ROOT / "references/schemas" / filename).read_bytes()), schema)

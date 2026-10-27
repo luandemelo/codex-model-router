@@ -4,12 +4,16 @@ This is the decision reference for the deterministic CMR compiler. The
 controller supplies only IDs from the published ontologies; it does not write
 the route record.
 
-The coordinator remains Sol/medium. Apply this matrix to each bounded unit of work,
-including eligible units within an initiative that also has risky modules.
-The coordinator must delegate eligible implementation to the exact Luna effort
-below and must not implement that source itself. An unavailable effort blocks that dispatch;
-it does not authorize a silent Sol fallback. Risk, judgment, recurrence, and
-independent review retain the rules below.
+The coordinator remains Sol/medium. Apply this matrix to each bounded unit of
+work, including eligible units within an initiative that also has risky
+modules. The coordinator delegates eligible implementation to the exact
+compiled model and effort below; it does not implement that source itself.
+Luna/xhigh is the default eligible implementation route. Terra/xhigh is
+available only when the current runtime binds a valid, explicit, task-specific
+latency preference for an otherwise Luna-eligible implementation. An
+unavailable selected effort blocks that dispatch; it does not authorize a
+silent model substitution. Risk, judgment, recurrence, and independent review
+retain precedence over a latency preference.
 
 ## Precedence
 
@@ -23,8 +27,19 @@ The compiler applies the first matching rule:
 | integration or elevated risk | gpt-6.1-sol/high | gpt-6.1-sol/high |
 | audit, judgment, diagnosis, or reconciliation | gpt-6.1-sol/medium | gpt-6.1-sol/medium |
 | complex local work that fails the dense implementation predicates below | gpt-6.1-sol/medium | gpt-6.1-sol/medium |
-| dense approved bounded local implementation | gpt-6-luna/max | gpt-6.1-sol/medium |
+| otherwise Luna-eligible implementation with a valid explicit task latency preference | gpt-6.1-terra/xhigh | gpt-6.1-sol/medium |
+| dense approved bounded local implementation without a latency preference | gpt-6-luna/max | gpt-6.1-sol/medium |
 | clear isolated low-risk implementation | gpt-6-luna/xhigh | gpt-6.1-sol/medium |
+
+The Terra row is conditional, not a default. The exact `latency_preference` runtime object is
+bound to the task, phase, complete brief reference and quoted UTF-8 byte span,
+and the current profile binding. It cannot set a model, effort, or route. The
+current profile is identified by `cmr_latency.profile_binding()`
+(`luna-default-terra-latency-v1`, SHA-256
+`a4fbe81eeed636e5e431fd43cfaaf73a4b9374293546cecc731025373886378c`). A null
+preference preserves the Luna routes. Terra/xhigh is the only Terra route and
+requires fresh independent Sol/medium task review. The Luna/xhigh safe-lane
+skip does not apply to Terra.
 
 Hard gates include architecture, authentication/authorization, schema
 migration, rollback, concurrency, locks, idempotency, cryptography, secrets,
@@ -60,10 +75,18 @@ Complex local work missing any required qualifier stays Sol/medium with reason
 `complex_local_execution`. Diagnosis uses `judgment_required`; audit, judgment,
 and reconciliation need no `low_blast_radius` qualifier to stay on Sol/medium.
 
-Luna/xhigh is the default eligible implementation effort. Cost, urgency, a
-prose request for max, or the presence of tests does not create dense facts or
-override a higher route. Canonical plan certification remains Sol/max, separate
-from the Sol/medium coordinator, controller, and preflight.
+Luna/xhigh is the default eligible implementation effort. A latency
+preference is not model-selection authority by itself: only the exact validated
+CMR binding can select Terra/xhigh. Cost, urgency, a prose request for max, or
+the presence of tests does not create dense facts or override a higher route.
+Hard gates, integration/elevated risk, recurrence, diagnosis or judgment, and
+final review retain their compiled precedence even when the routing policy
+contains a latency preference. If a valid preference coincides with unresolved
+uncertainty, the compiler keeps the policy bound and routes the occurrence to
+Sol/medium for judgment. Missing Terra capability blocks only a dispatch whose
+compiled route selected Terra; it does not block a default Luna route and does
+not cause automatic fallback. Canonical plan certification remains Sol/max,
+separate from the Sol/medium coordinator, controller, and preflight.
 
 ## Gate evidence
 
@@ -114,18 +137,18 @@ The CMR selector is closed: `skip` has no triggers and one exact safe-lane
 manifest reference; `run` has canonical trigger IDs and receives Sol/medium
 preflight; `block` is reserved for invalid artifact binding. Safe-lane
 membership is exact to the frozen plan, brief, task, and Luna/xhigh worker
-pair. The selector compares both model and effort. Dense Luna/max always runs
-fresh preflight, even when its task and brief match a default safe lane. Missing or stale
-global evidence means `safe_lane_unavailable`, not a down-route or a task
-block.
+pair. The selector compares both model and effort. Dense Luna/max and Terra/xhigh
+always run fresh preflight, even when their task and brief match a default safe
+lane. Missing or stale global evidence means `safe_lane_unavailable`, not a
+down-route or a task block.
 
 Uncertainty IDs (`multiple_policy_facts`, `negation_contrast_or_condition`,
 `indirect_or_ambiguous_implication`, and `controller_uncertainty`) force a
 fresh semantic preflight. They do not authorize the preflight to become a
 worker, review, or external mutation.
 
-Both Luna efforts have the same independent Sol/medium task review and fix-loop
-escalation: rounds 0–3 keep the initial worker effort, round 4 is fresh
-Sol/medium, and round 5 is fresh Sol/max. These review rounds do not reset the
+Luna/xhigh, Luna/max, and Terra/xhigh have independent Sol/medium task review
+and the same fix-loop escalation: rounds 0–3 keep the initial worker effort,
+round 4 is fresh Sol/medium, and round 5 is fresh Sol/max. These review rounds do not reset the
 same-defect recurrence gate. Preflight replacement can raise xhigh to max;
 lowering max to xhigh is forbidden.

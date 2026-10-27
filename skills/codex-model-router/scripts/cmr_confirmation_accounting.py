@@ -188,6 +188,55 @@ def _source_scopes(
     return scopes, proposers, _ordered(errors)
 
 
+def _dispatch_accounting_bindings(descriptor: int, states: Sequence[cmr_runtime.TaskAccountingState],
+    sources: Any, occurrences: Sequence[cmr_runtime.OccurrenceAudit], ledger_root: Path) -> list[str]:
+    """Keep new-profile calls attached to this task's exact dispatch runtime.
+
+    A v4-looking model/effort record cannot erase a task's explicit preference,
+    and a different well-formed runtime cannot substitute for the sealed one.
+    Failures remain in the accounting inventory, including their full usage.
+    """
+    errors: list[str] = []
+    if not isinstance(sources, Mapping):
+        return errors  # The source-scope validator reports the malformed input.
+    for state in states:
+        observed = [item for item in occurrences if item.task_id == state.task_id
+            and item.scope_kind == "task" and item.phase in {"worker", "task_review", "re_review"}]
+        source = sources.get(state.task_id)
+        if not isinstance(source, Mapping) or source.get("runtime_input") is None:
+            continue
+        try:
+            runtime_ref = _reference(source["runtime_input"])
+            runtime_value = _read_object(descriptor, runtime_ref, "accounting bound runtime")
+            # The sealed preflight decision is authoritative even on a skip.
+            # Caller-supplied runtime/audit versions cannot erase its v5 policy.
+            preflight_value = _read_object(descriptor, _reference(source["preflight_evidence"]),
+                                           "accounting preflight evidence")
+            candidate = _read_object(descriptor, _reference(preflight_value["candidate_decision"]),
+                                     "accounting candidate decision")
+            if (candidate.get("schema_version") != "cmr-route-decision-v5"
+                    and runtime_value.get("schema_version") != "cmr-runtime-input-v5"
+                    and not any(item.schema_version == "cmr-occurrence-audit-v5" for item in observed)):
+                continue
+            if not observed and not state.dispatchable:
+                continue
+            bundle_path = ledger_root / f"tasks/{cmr_dispatch._task_component(state.task_id)}/dispatch/bundle.json"
+            request = cmr_dispatch.dispatch_request(bundle_path, ledger_root)
+            scope = request["scope"]
+            bundle = _read_object(descriptor, _reference(scope["bundle"]), "accounting dispatch bundle")
+            if not cmr_dispatch._json_type_equal(bundle["runtime_input"], source["runtime_input"]):
+                errors.append(f"task {state.task_id} accounting runtime does not bind dispatch bundle")
+            for item in observed:
+                if item.schema_version != "cmr-occurrence-audit-v5" or not isinstance(item.dispatch_binding, Mapping):
+                    errors.append(f"task {state.task_id} requires version-5 dispatch-bound audit for {item.phase}")
+                elif (not cmr_dispatch._json_type_equal(item.dispatch_binding.get("scope"), scope)
+                        or item.dispatch_binding.get("ledger_root") != str(ledger_root.absolute())):
+                    errors.append(f"task {state.task_id} observed audit does not bind this dispatch scope")
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            errors.append(f"task {state.task_id} accounting dispatch binding is invalid: {exc}")
+    return _ordered(errors)
+
+
 def _usage(occurrence: cmr_runtime.OccurrenceAudit) -> dict[str, int] | None:
     parsed, _ = cmr_runtime._usage_dict(occurrence.usage)
     return parsed
@@ -290,6 +339,7 @@ def summarize_execution_accounting(
         descriptor, root_stat = cmr_dispatch._open_root(root)
         scopes, proposers, source_errors = _source_scopes(descriptor, states, task_preflight_evidence, root)
         errors.extend(source_errors)
+        errors.extend(_dispatch_accounting_bindings(descriptor, states, task_preflight_evidence, unique, root))
         members: dict[str, list[cmr_runtime.OccurrenceAudit]] = {scope.packet_sha256: [] for scope in scopes}
         for occurrence in unique:
             matches = [scope for scope in scopes if occurrence.prompt_sha256 == scope.prompt_sha256
@@ -406,13 +456,17 @@ def validate_execution_accounting_input(value: Any) -> list[str]:
     errors = cmr_dispatch._exact_fields(value, _INPUT_FIELDS, "execution accounting input")
     if not isinstance(value, Mapping):
         return errors
-    if value.get("schema_version") != "cmr-execution-accounting-input-v1":
+    version = value.get("schema_version")
+    if not isinstance(version, str) or version not in {"cmr-execution-accounting-input-v1", "cmr-execution-accounting-input-v2"}:
         errors.append("execution accounting input.schema_version is invalid")
     for field in ("occurrences", "task_states", "instrument_errors"):
         if not isinstance(value.get(field), list):
             errors.append(f"{field} must be a JSON array")
     if isinstance(value.get("occurrences"), list):
         for index, record in enumerate(value["occurrences"]):
+            if (value.get("schema_version") == "cmr-execution-accounting-input-v1"
+                    and isinstance(record, Mapping) and record.get("schema_version") != "cmr-occurrence-audit-v4"):
+                errors.append("version-5 occurrences require cmr-execution-accounting-input-v2")
             try:
                 cmr_runtime.OccurrenceAudit.from_record(record, label=f"occurrences[{index}]")
             except ValueError as exc:
@@ -525,8 +579,18 @@ def expected_execution_accounting_schemas() -> dict[str, dict[str, Any]]:
         "task_preflight_evidence": {"type": "object", "propertyNames": {"minLength": 1}, "additionalProperties": source}})
     request.update({"$schema": cmr_contracts.JSON_SCHEMA_DIALECT,
         "$id": "cmr-execution-accounting-input-v1.schema.json", "$defs": occurrence_defs})
+    import copy
+    latency_request = copy.deepcopy(request)
+    latency_request["$id"] = "cmr-execution-accounting-input-v2.schema.json"
+    latency_request["properties"]["schema_version"] = {"const": "cmr-execution-accounting-input-v2"}
+    latency_occurrence = cmr_contracts._latency_occurrence_schema()
+    latency_occurrence.pop("$defs")
+    latency_occurrence.pop("$id")
+    latency_occurrence.pop("$schema")
+    latency_request["properties"]["occurrences"]["items"] = {"oneOf": [occurrence, latency_occurrence]}
     return {"cmr-execution-accounting-v1.schema.json": report,
-        "cmr-execution-accounting-input-v1.schema.json": request}
+        "cmr-execution-accounting-input-v1.schema.json": request,
+        "cmr-execution-accounting-input-v2.schema.json": latency_request}
 
 
 __all__ = ["validate_execution_call_shape", "summarize_execution_accounting",

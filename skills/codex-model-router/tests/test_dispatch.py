@@ -210,13 +210,14 @@ class DispatchTests(unittest.TestCase):
         )
         return occurrence, raw, transcript, occurrence_ref
 
-    def planning_inputs(self) -> tuple[Any, dict[str, Any], Any, Any]:
+    def planning_inputs(self, *, brief_payloads: Mapping[str, bytes] | None = None) -> tuple[Any, dict[str, Any], Any, Any]:
+        brief_payloads = brief_payloads or {}
         briefs = {
             "T-001": self.artifact(
-                "briefs/T-001.md", b"Task T-001 approved implementation brief\n"
+                "briefs/T-001.md", brief_payloads.get("T-001", b"Task T-001 approved implementation brief\n")
             ),
             "T-002": self.artifact(
-                "briefs/T-002.md", b"Task T-002 approved implementation brief\n"
+                "briefs/T-002.md", brief_payloads.get("T-002", b"Task T-002 approved implementation brief\n")
             ),
         }
         plan_value = {
@@ -381,7 +382,10 @@ class DispatchTests(unittest.TestCase):
         self.ensure_candidate_gate(bundle_inputs)
         prompt = self.artifact(
             f"control/{prefix}.prompt.md",
-            f"Audit {task_id} semantic routing.\n".encode("utf-8") + compiler.build_preflight_gate_attachment(
+            f"Audit {task_id} semantic routing.\n".encode("utf-8") + (
+                compiler.build_preflight_latency_attachment(bundle_inputs["decision"]["routing_policy"])
+                if "routing_policy" in bundle_inputs["decision"] else b""
+            ) + compiler.build_preflight_gate_attachment(
                 bundle_inputs["candidate_gate_ref"], bundle_inputs["candidate_gate_bytes"]),
         )
         forbidden = (
@@ -1931,6 +1935,7 @@ class DispatchTests(unittest.TestCase):
                 "cmr-preflight-evidence-v4.schema.json",
                 "cmr-dispatch-bundle-v4.schema.json",
                 "cmr-dispatch-bundle-v5.schema.json",
+                "cmr-dispatch-request-v2.schema.json",
                 "cmr-preflight-invocation-v5.schema.json",
                 "cmr-gate-confirmation-v1.schema.json",
                 "cmr-gate-confirmation-result-v1.schema.json",

@@ -229,6 +229,7 @@ def _expectation(
             cwd_policy=value["cwd_policy"],
             write_policy=value["write_policy"],
             response_policy=value["response_policy"],
+            dispatch_binding=value.get("dispatch_binding"),
         )
     except (TypeError, ValueError, KeyError) as exc:
         raise CliError(f"occurrence expectation is invalid: {exc}") from exc

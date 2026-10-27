@@ -1,0 +1,1130 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "occurrences",
+    "task_states",
+    "plan_sha256",
+    "release_review",
+    "semantic_results",
+    "instrument_errors",
+    "task_preflight_evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cmr-execution-accounting-input-v2"
+    },
+    "occurrences": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema_version",
+              "phase",
+              "scope_kind",
+              "scope_id",
+              "round_index",
+              "task_id",
+              "response_policy",
+              "model",
+              "reasoning_effort",
+              "fork_turns",
+              "prompt_sha256",
+              "thread_policy",
+              "thread_id",
+              "cwd",
+              "write_policy",
+              "exit_code",
+              "external_writes",
+              "transcript_sha256",
+              "raw_sha256",
+              "usage",
+              "tool_event_count",
+              "terminal_report_sha256",
+              "ignored_empty_agent_messages",
+              "accepted",
+              "failure_class",
+              "errors"
+            ],
+            "properties": {
+              "schema_version": {
+                "const": "cmr-occurrence-audit-v4"
+              },
+              "phase": {
+                "type": "string",
+                "enum": [
+                  "planning",
+                  "controller",
+                  "preflight",
+                  "worker",
+                  "task_review",
+                  "re_review",
+                  "final_review"
+                ]
+              },
+              "scope_kind": {
+                "type": "string",
+                "enum": [
+                  "plan",
+                  "task",
+                  "release"
+                ]
+              },
+              "scope_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "round_index": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task_id": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_policy": {
+                "type": "string",
+                "enum": [
+                  "closed_json",
+                  "sdd_report"
+                ]
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "gpt-6-luna",
+                  "gpt-6.1-sol"
+                ]
+              },
+              "reasoning_effort": {
+                "type": "string",
+                "enum": [
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              },
+              "fork_turns": {
+                "const": "none"
+              },
+              "prompt_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "thread_policy": {
+                "type": "string",
+                "enum": [
+                  "fresh",
+                  "resume"
+                ]
+              },
+              "thread_id": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cwd": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/EphemeralCwd"
+                  },
+                  {
+                    "$ref": "#/$defs/PlanWorktreeCwd"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "write_policy": {
+                "type": "string",
+                "enum": [
+                  "control_plane_no_write",
+                  "worktree_write",
+                  "source_read_only"
+                ]
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "external_writes": {
+                "type": "boolean"
+              },
+              "transcript_sha256": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "raw_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "usage": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/UsageEvidence"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tool_event_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "terminal_report_sha256": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ignored_empty_agent_messages": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "accepted": {
+                "type": "boolean"
+              },
+              "failure_class": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "operational",
+                      "instrument"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            },
+            "allOf": [
+              {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "model": {
+                        "const": "gpt-6-luna"
+                      },
+                      "reasoning_effort": {
+                        "const": "xhigh"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "model": {
+                        "const": "gpt-6-luna"
+                      },
+                      "reasoning_effort": {
+                        "const": "max"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "model": {
+                        "const": "gpt-6.1-sol"
+                      },
+                      "reasoning_effort": {
+                        "const": "medium"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "model": {
+                        "const": "gpt-6.1-sol"
+                      },
+                      "reasoning_effort": {
+                        "const": "high"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "model": {
+                        "const": "gpt-6.1-sol"
+                      },
+                      "reasoning_effort": {
+                        "const": "max"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema_version",
+              "phase",
+              "scope_kind",
+              "scope_id",
+              "round_index",
+              "task_id",
+              "response_policy",
+              "model",
+              "reasoning_effort",
+              "fork_turns",
+              "prompt_sha256",
+              "thread_policy",
+              "thread_id",
+              "cwd",
+              "write_policy",
+              "exit_code",
+              "external_writes",
+              "transcript_sha256",
+              "raw_sha256",
+              "usage",
+              "tool_event_count",
+              "terminal_report_sha256",
+              "ignored_empty_agent_messages",
+              "accepted",
+              "failure_class",
+              "errors",
+              "dispatch_binding"
+            ],
+            "properties": {
+              "schema_version": {
+                "const": "cmr-occurrence-audit-v5"
+              },
+              "phase": {
+                "type": "string",
+                "enum": [
+                  "planning",
+                  "controller",
+                  "preflight",
+                  "worker",
+                  "task_review",
+                  "re_review",
+                  "final_review"
+                ]
+              },
+              "scope_kind": {
+                "type": "string",
+                "enum": [
+                  "plan",
+                  "task",
+                  "release"
+                ]
+              },
+              "scope_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "round_index": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task_id": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "response_policy": {
+                "type": "string",
+                "enum": [
+                  "closed_json",
+                  "sdd_report"
+                ]
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reasoning_effort": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fork_turns": {
+                "const": "none"
+              },
+              "prompt_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "thread_policy": {
+                "type": "string",
+                "enum": [
+                  "fresh",
+                  "resume"
+                ]
+              },
+              "thread_id": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cwd": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/EphemeralCwd"
+                  },
+                  {
+                    "$ref": "#/$defs/PlanWorktreeCwd"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "write_policy": {
+                "type": "string",
+                "enum": [
+                  "control_plane_no_write",
+                  "worktree_write",
+                  "source_read_only"
+                ]
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "external_writes": {
+                "type": "boolean"
+              },
+              "transcript_sha256": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "raw_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "usage": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/UsageEvidence"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tool_event_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "terminal_report_sha256": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ignored_empty_agent_messages": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "accepted": {
+                "type": "boolean"
+              },
+              "failure_class": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "operational",
+                      "instrument"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "dispatch_binding": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "schema_version",
+                  "ledger_root",
+                  "scope"
+                ],
+                "properties": {
+                  "schema_version": {
+                    "const": "cmr-dispatch-binding-v1"
+                  },
+                  "ledger_root": {
+                    "type": "string",
+                    "pattern": "^(?:/|[A-Za-z]:/).+"
+                  },
+                  "scope": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "task_id",
+                      "role",
+                      "brief",
+                      "bundle",
+                      "final_decision",
+                      "prompt_sha256",
+                      "routing_policy"
+                    ],
+                    "properties": {
+                      "task_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "role": {
+                        "enum": [
+                          "implementation",
+                          "audit",
+                          "judgment",
+                          "reconciliation",
+                          "final_review"
+                        ]
+                      },
+                      "brief": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "path",
+                          "sha256",
+                          "size_bytes"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "bundle": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "path",
+                          "sha256",
+                          "size_bytes"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "final_decision": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "path",
+                          "sha256",
+                          "size_bytes"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          "size_bytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      },
+                      "prompt_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "routing_policy": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "profile",
+                          "latency_preference"
+                        ],
+                        "properties": {
+                          "profile": {
+                            "const": {
+                              "profile_id": "luna-default-terra-latency-v1",
+                              "profile_sha256": "a4fbe81eeed636e5e431fd43cfaaf73a4b9374293546cecc731025373886378c"
+                            }
+                          },
+                          "latency_preference": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "schema_version",
+                                  "task_id",
+                                  "task_phase",
+                                  "brief",
+                                  "preference",
+                                  "basis",
+                                  "tradeoff",
+                                  "evidence"
+                                ],
+                                "properties": {
+                                  "schema_version": {
+                                    "const": "cmr-latency-preference-v1"
+                                  },
+                                  "task_id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "task_phase": {
+                                    "enum": [
+                                      "implementation",
+                                      "final_review"
+                                    ]
+                                  },
+                                  "brief": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "path",
+                                      "sha256",
+                                      "size_bytes"
+                                    ],
+                                    "properties": {
+                                      "path": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{64}$"
+                                      },
+                                      "size_bytes": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      }
+                                    }
+                                  },
+                                  "preference": {
+                                    "const": "latency"
+                                  },
+                                  "basis": {
+                                    "const": "explicit_task_opt_in"
+                                  },
+                                  "tradeoff": {
+                                    "const": "latency_over_model_cost"
+                                  },
+                                  "evidence": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "start_byte",
+                                      "end_byte",
+                                      "quote"
+                                    ],
+                                    "properties": {
+                                      "start_byte": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      },
+                                      "end_byte": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      },
+                                      "quote": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "accepted": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "worker",
+                        "task_review",
+                        "re_review"
+                      ]
+                    },
+                    "scope_kind": {
+                      "const": "task"
+                    }
+                  },
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "model": {
+                          "const": "gpt-6-luna"
+                        },
+                        "reasoning_effort": {
+                          "const": "xhigh"
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "model": {
+                          "const": "gpt-6-luna"
+                        },
+                        "reasoning_effort": {
+                          "const": "max"
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "model": {
+                          "const": "gpt-6.1-sol"
+                        },
+                        "reasoning_effort": {
+                          "const": "medium"
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "model": {
+                          "const": "gpt-6.1-sol"
+                        },
+                        "reasoning_effort": {
+                          "const": "high"
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "model": {
+                          "const": "gpt-6.1-sol"
+                        },
+                        "reasoning_effort": {
+                          "const": "max"
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "model": {
+                          "const": "gpt-6.1-terra"
+                        },
+                        "reasoning_effort": {
+                          "const": "xhigh"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "task_states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "selector",
+          "dispatchable",
+          "completed_worker_rounds"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "selector": {
+            "enum": [
+              "run",
+              "skip",
+              "block"
+            ]
+          },
+          "dispatchable": {
+            "type": "boolean"
+          },
+          "completed_worker_rounds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "release_review": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "initial_implementation_head",
+            "initial_export_head",
+            "fix_required",
+            "final_implementation_head",
+            "final_export_head"
+          ],
+          "properties": {
+            "initial_implementation_head": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+            },
+            "initial_export_head": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+            },
+            "fix_required": {
+              "type": "boolean"
+            },
+            "final_implementation_head": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+            },
+            "final_export_head": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "semantic_results": {
+      "oneOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "instrument_errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "task_preflight_evidence": {
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "preflight_evidence",
+          "runtime_input"
+        ],
+        "properties": {
+          "preflight_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "size_bytes"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "size_bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "runtime_input": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256",
+                  "size_bytes"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))[^\\\\\\x00-\\x1f\\x7f]+$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmr-execution-accounting-input-v2.schema.json",
+  "$defs": {
+    "UsageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cached_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "EphemeralCwd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "fresh",
+        "destroyed",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ephemeral"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "fresh": {
+          "const": true
+        },
+        "destroyed": {
+          "const": true
+        },
+        "read_only": {
+          "const": true
+        }
+      }
+    },
+    "PlanWorktreeCwd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "workspace_id",
+        "base_head",
+        "head",
+        "read_only"
+      ],
+      "properties": {
+        "kind": {
+          "const": "plan_worktree"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/).+"
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_head": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "read_only": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

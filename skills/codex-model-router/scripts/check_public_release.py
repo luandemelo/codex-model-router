@@ -59,7 +59,7 @@ _STDLIB.update(
         "subprocess", "sys", "tempfile", "textwrap", "time", "typing", "unittest", "urllib",
     }
 )
-_LOCAL_MODULES = {"cmr_compiler", "cmr_confirmation_accounting", "cmr_contracts", "cmr_dispatch", "cmr_gate_evidence", "cmr_runtime", "qfr_legacy", "support"}
+_LOCAL_MODULES = {"cmr_compiler", "cmr_confirmation_accounting", "cmr_contracts", "cmr_dispatch", "cmr_gate_evidence", "cmr_latency", "cmr_runtime", "qfr_legacy", "support"}
 
 
 def _error(message: str, errors: list[str]) -> None:
@@ -253,8 +253,8 @@ def _check_cross_file_contracts(root: Path, errors: list[str]) -> None:
     if isinstance(plugin, dict):
         if plugin.get("name") != "codex-model-router":
             _error("plugin manifest name must be codex-model-router", errors)
-        if plugin.get("version") != "0.10.0":
-            _error("plugin manifest version must be 0.10.0", errors)
+        if plugin.get("version") != "0.11.0":
+            _error("plugin manifest version must be 0.11.0", errors)
         if plugin.get("license") != "Apache-2.0":
             _error("plugin manifest license must be Apache-2.0", errors)
         interface = plugin.get("interface")

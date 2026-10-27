@@ -20,6 +20,7 @@ from support import SKILL_ROOT, load_fixture, load_module, compile_fixture_route
 compiler = load_module("cmr_compiler")
 contracts = load_module("cmr_contracts")
 dispatch = load_module("cmr_dispatch")
+latency = load_module("cmr_latency")
 runtime_module = load_module("cmr_runtime")
 
 
@@ -203,6 +204,132 @@ class SkillContractTests(unittest.TestCase):
 
     def test_public_skill_entrypoint_exists(self) -> None:
         self.assertTrue((SKILL_ROOT / "SKILL.md").is_file())
+
+    def test_public_guidance_describes_bound_terra_opt_in_and_011_release(self) -> None:
+        plugin_root = SKILL_ROOT.parents[1]
+        skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        policy_text = (SKILL_ROOT / "references/routing-policy.md").read_text(
+            encoding="utf-8"
+        )
+        dependency_text = (SKILL_ROOT / "references/dependency-preflight.md").read_text(
+            encoding="utf-8"
+        )
+        basis_text = (SKILL_ROOT / "references/policy-basis.md").read_text(
+            encoding="utf-8"
+        )
+        execution_text = (SKILL_ROOT / "references/execution-contract.md").read_text(
+            encoding="utf-8"
+        )
+        agents_text = (SKILL_ROOT / "agents/openai.yaml").read_text(encoding="utf-8")
+        release_text = (plugin_root / "README.md").read_text(encoding="utf-8")
+        checker_text = (SKILL_ROOT / "scripts/check_public_release.py").read_text(
+            encoding="utf-8"
+        )
+        plugin = json.loads(
+            (plugin_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(plugin["version"], "0.11.0")
+        self.assertIn("Terra", plugin["description"])
+        self.assertIn("0.11.0", release_text)
+        self.assertIn('"0.11.0"', checker_text)
+        self.assertIn("Terra/xhigh", agents_text)
+        for fragment in (
+            "gpt-6.1-terra",
+            "task-specific",
+            "latency preference",
+            "Luna/xhigh remains the default",
+            "never triggers a",
+            "no additional human",
+            "confirmation is required for each use",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, skill_text)
+        for fragment in (
+            "gpt-6.1-terra/xhigh",
+            "latency_preference",
+            "profile_binding()",
+            "does not apply to Terra",
+            "Sol/medium task review",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, policy_text)
+        for fragment in (
+            "`gpt-6.1-terra`/xhigh is an optional dependency",
+            "Require it only when the",
+            "compiled route selects Terra",
+            "absence does not block a default Luna route",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, dependency_text)
+        for fragment in (
+            "native four-task pilot",
+            "limited directional sample",
+            "no quality superiority",
+            "not Codex subscription billing",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, basis_text)
+        for fragment in (
+            "cmr-runtime-input-v5",
+            "cmr-route-decision-v5",
+            "cmr-dispatch-request-v2",
+            "cmr-execution-accounting-input-v2",
+            "OccurrenceExpectation.for_dispatch",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, execution_text)
+
+    def test_sdd_handoff_uses_validated_worker_and_generic_execution_proof(self) -> None:
+        execution_text = (SKILL_ROOT / "references/execution-contract.md").read_text(
+            encoding="utf-8"
+        )
+        handoff_text = " ".join(
+            execution_text.split("## SDD handoff and reviews", 1)[1].split()
+        )
+        for fragment in (
+            "Luna/xhigh is the default",
+            "valid runtime-v5 latency preference can select Terra/xhigh",
+            "when no valid latency preference is bound",
+            "The validated dispatch request controls the exact worker model and effort",
+            "Luna and Terra workers require independent Sol/medium task review",
+            "selected worker produced the code",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, handoff_text)
+        for stale_fragment in (
+            "must run as Luna/xhigh",
+            "runs as Luna/max",
+            "Luna produced the code",
+        ):
+            with self.subTest(stale_fragment=stale_fragment):
+                self.assertNotIn(stale_fragment, handoff_text)
+
+    def test_profile_binding_example_matches_helper_and_control_plane_contract(self) -> None:
+        execution_text = (SKILL_ROOT / "references/execution-contract.md").read_text(
+            encoding="utf-8"
+        )
+        example_marker = "The default `routing_policy` is shown below."
+        self.assertIn(example_marker, execution_text)
+        example_start = execution_text.index(example_marker)
+        example_tail = execution_text[example_start:].split("```json\n", 1)[1]
+        example_json = example_tail.split("\n```", 1)[0]
+        documented_policy = json.loads(example_json)
+        actual_binding = latency.profile_binding()
+
+        self.assertEqual(set(actual_binding), {"profile_id", "profile_sha256"})
+        self.assertEqual(
+            documented_policy,
+            {"profile": actual_binding, "latency_preference": None},
+        )
+        control_plane = " ".join(
+            execution_text.split("## Occurrence-specific gate evidence", 1)[0].split()
+        )
+        self.assertIn(
+            "`cmr-runtime-input-v4` continues to compile `cmr-route-decision-v4`",
+            control_plane,
+        )
+        self.assertNotIn("The compiler emits `cmr-runtime-input-v4`", control_plane)
 
     def test_host_dependency_preflight_is_before_dispatch_and_fail_closed(self) -> None:
         skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")

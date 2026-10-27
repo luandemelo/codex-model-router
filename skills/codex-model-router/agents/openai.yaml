@@ -1,7 +1,7 @@
 interface:
   display_name: "Codex Model Router"
-  short_description: "Sol coordination with adaptive Luna effort for SDD"
-  default_prompt: "Use $codex-model-router with Sol/medium coordination, Luna/xhigh for clear eligible implementation, and Luna/max for dense approved bounded local logic; retain actual worker execution evidence."
+  short_description: "Sol coordination, Luna default, optional Terra latency route"
+  default_prompt: "Use $codex-model-router with Sol/medium coordination and Luna/xhigh as the eligible implementation default. Select Terra/xhigh only for an explicit task-specific latency preference bound by CMR; retain risk precedence and actual worker execution evidence."
 
 policy:
   allow_implicit_invocation: true
